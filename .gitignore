@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.direnv/
+
+# Raw + intermediate data — large and regenerable via the pipeline
+Chigualen/data/raw/
+Chigualen/data/clean/
+Chigualen/*.csv
+Chigualen/*.pdf
+Chigualen/*.zip
+
+# But DO commit the runtime outputs the app reads
+!Chigualen/data/out/
+
+# Streamlit
+.streamlit/secrets.toml

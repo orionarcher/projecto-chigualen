@@ -1,0 +1,20 @@
+/* Chigualen app polish — theme-agnostic (works in light and dark) */
+
+/* Tighten the top spacing so headings aren't floating */
+.block-container {
+    padding-top: 2rem;
+    max-width: 1200px;
+}
+
+/* Make tables a bit more readable */
+[data-testid="stDataFrame"] {
+    font-size: 0.95em;
+}
+
+/* Italic species headings keep the botanical feel without forcing colors */
+h2 {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+h3 {
+    margin-top: 1.2em;
+}
