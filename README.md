@@ -151,6 +151,22 @@ read the registry. A historical edition enters as its own source rather than
 replacing the current one, so an edition-to-edition disagreement surfaces as an
 ordinary `status_conflict`.
 
+## Static build (experimental)
+
+[`web/`](web/README.md) is the same database as a static site — no server, every
+lookup in the browser. Deployed from `netlify.toml`, which regenerates the data
+at build time in about five seconds.
+
+It exists mainly for one property: an authority's uploaded checklist is parsed
+and resolved in the page and never reaches a server. Search and the full batch
+diff need no network access at all once the ~1 MB index has loaded; 5,000 names
+resolve in ~250 ms.
+
+Its risk is that `web/js/data.js` re-implements the resolver that
+[`app/data.py`](app/data.py) owns. `web/parity/` holds that in check — 1,213
+frozen Python verdicts replayed through the browser, compared field by field.
+Run it after touching either resolver.
+
 ## Data hygiene
 
 Two classes of malformed name have been cleared out of the CITES PDF parser:

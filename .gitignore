@@ -31,3 +31,8 @@ Chigualen/*.zip
 
 # Pre-repair snapshots written by scripts/09_repair_outputs.py
 Chigualen/data/out/*.pre-repair
+
+# Static web build: data/ is regenerated from Chigualen/data/out by
+# scripts/10_export_web.py, on every Netlify build. 35 MB across 513 files, all
+# of it derivable — no reason to carry it in git.
+web/data/

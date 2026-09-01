@@ -1,0 +1,71 @@
+# Static build
+
+The same database as the Streamlit app in [`../app`](../app), served as a static
+site. **There is no server.** The pipeline output is packed into JSON at build
+time and every lookup, diff and export runs in the visitor's browser.
+
+## Why it exists
+
+Three things this shape buys that the hosted Python app cannot:
+
+- **An authority's checklist never leaves their machine.** The Streamlit app
+  says uploads are never written to disk, which is true — but the file still
+  travels to a server. Here it is parsed and resolved in the page. That matters
+  for a CITES Management Authority diffing an internal list.
+- **Longevity.** A folder of files on a CDN keeps working with no runtime to
+  deprecate, no process to keep alive and no bill to lapse.
+- **Anyone can self-host it.** It is static files; other authorities can drop
+  the folder behind their own web server.
+
+## How the data is shaped
+
+`scripts/10_export_web.py` turns `Chigualen/data/out/*.csv` into:
+
+| | Size | Fetched |
+|---|---|---|
+| `data/index.json` | 4.5 MB raw, **~1.0 MB gzipped** | once, before first paint |
+| `data/species/NNN.json` | 256 shards, ~13 kB gzipped each | when a species card opens |
+| `data/contested/NNN.json` | 256 shards, ~4 kB gzipped each | when a contested name opens |
+
+The index holds every binomial the database knows with just enough to resolve
+it, so **search and the whole batch diff run with no further network access** —
+5,000 names resolve in about 250 ms. Only the verbose per-record detail is
+sharded. Shards are keyed by FNV-1a hash rather than by initial, because an
+alphabetical split puts a tenth of Orchidaceae in `B` alone.
+
+`data/` is generated, not committed. Netlify rebuilds it on every deploy
+(~5 s); to work on the site locally:
+
+```bash
+pip install -r requirements.txt
+python3 scripts/10_export_web.py
+python3 -m http.server -d web 8610
+```
+
+Then open <http://localhost:8610>. Opening `index.html` from the filesystem will
+not work — browsers block `fetch` on `file://`.
+
+## The parity check
+
+`web/js/data.js` is a **second implementation** of the logic that decides what a
+name means. The Streamlit app has exactly one (`resolve()` in `app/data.py`),
+which is what guarantees a species card and a batch export can never disagree —
+the failure the CITES authority reported. Two implementations put that guarantee
+at risk.
+
+The mitigation is <http://localhost:8610/parity/>. `tests/make_parity_fixture.py`
+freezes what the Python resolver says about 1,213 cases — every contest class,
+both reported bugs, authority tails, PDF ligatures, and a seeded random sample
+across accepted, synonym and contested names — and the page re-runs all of them
+through the browser resolver, comparing every field including per-source
+verdicts.
+
+**Run it after touching either resolver.** It currently passes 1,213/1,213.
+
+## What is not ported
+
+`app/backbone.py` (custom checklists) and `app/sources_page.py` (the data-source
+descriptions) are not in this build. Neither is hard — the sources page is
+static prose driven by `scripts/_sources.py`, and custom backbones are already
+session-only, so they translate directly. They were left out to keep the
+prototype honest about what has actually been verified.
