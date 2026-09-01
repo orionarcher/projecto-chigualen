@@ -20,3 +20,6 @@ Chigualen/*.zip
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Pre-repair snapshots written by scripts/09_repair_outputs.py
+Chigualen/data/out/*.pre-repair

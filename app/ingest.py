@@ -7,12 +7,34 @@ import io
 import pandas as pd
 import streamlit as st
 
+from app import backbone
 from app.data import (
+    SOURCES,
     build_search_index,
-    normalize_query,
+    per_source_columns,
+    resolve,
 )
 
 NONE_CHOICE = "— (none) —"
+
+# diff_category → (label, colour). The categories are unchanged; every row now
+# also carries the per-source detail that used to require a second, manual
+# single-species lookup.
+CATEGORIES = [
+    ("matched_accepted", "Matched (accepted)", "#2e7d32"),
+    ("matched_synonym", "Matched (synonym)", "#1565c0"),
+    ("contested", "Contested", "#ef6c00"),
+    ("missing", "Missing", "#c62828"),
+    ("unparseable", "Unparseable", "#546e7a"),
+]
+
+VERDICT_TO_CATEGORY = {
+    "accepted": "matched_accepted",
+    "synonym": "matched_synonym",
+    "contested": "contested",
+    "missing": "missing",
+    "unparseable": "unparseable",
+}
 
 
 def _read_upload(file) -> pd.DataFrame:
@@ -26,7 +48,6 @@ def _read_upload(file) -> pd.DataFrame:
             continue
     else:
         raise ValueError("Could not decode file as UTF-8 or Latin-1.")
-    # Prefer comma; fall back to tab if comma-only gives one column
     df = pd.read_csv(io.StringIO(text), dtype=str, keep_default_na=False)
     if df.shape[1] == 1:
         df2 = pd.read_csv(io.StringIO(text), sep="\t", dtype=str, keep_default_na=False)
@@ -35,36 +56,45 @@ def _read_upload(file) -> pd.DataFrame:
     return df
 
 
-def _diff_row(query: str, index: dict[str, dict]) -> tuple[str, str, str, str]:
-    """Return (category, canonical_name, synonym_type, detail) for a single query.
-
-    category ∈ {matched_accepted, matched_synonym, contested, missing, unparseable}
-    """
-    normalized = normalize_query(query)
-    if not normalized:
-        return ("unparseable", "", "", "fewer than 2 tokens or empty")
-    key = normalized.lower()
-    entry = index.get(key)
-    if entry is None:
-        return ("missing", "", "", "")
-    mt = entry["match_type"]
-    if mt == "accepted":
-        return ("matched_accepted", entry["canonical"], "", "")
-    if mt == "synonym":
-        return ("matched_synonym", entry["canonical"], entry.get("synonym_type", ""),
-                entry.get("synonym_sources", ""))
-    if mt == "contested":
-        return ("contested", entry["canonical"], "", "")
-    return ("missing", "", "", "")
-
-
-def _download_button(df: pd.DataFrame, filename: str, label: str) -> None:
+def _download_button(df: pd.DataFrame, filename: str, label: str, key: str) -> None:
     st.download_button(
         label=label,
         data=df.to_csv(index=False).encode("utf-8"),
         file_name=filename,
         mime="text/csv",
+        key=key,
     )
+
+
+def build_report(names: list[str]) -> pd.DataFrame:
+    """One row per input name, fully resolved.
+
+    Every column a reviewer needs to explain a verdict is here — the reason a
+    name is contested, the description year, and what each source says on its
+    own — so a contested batch no longer has to be re-checked one name at a time
+    in the search page.
+    """
+    index = build_search_index()
+    backbones = backbone.registered()
+
+    rows: list[dict[str, str]] = []
+    for value in names:
+        res = resolve(value, index)
+        bb_verdicts = {bb_id: bb.lookup(res.binomial) for bb_id, bb in backbones.items()}
+        row: dict[str, str] = {
+            "diff_category": VERDICT_TO_CATEGORY.get(res.verdict, res.verdict),
+            "normalized_binomial": res.binomial,
+            "matched_accepted_name": res.accepted_name,
+            "synonym_type": res.synonym_type,
+            "description_year": res.description_year,
+            "cites_appendix": res.cites_appendix,
+            "contest_class": res.contest_class,
+            "contest_reason": res.contest_reason,
+            "match_notes": res.note,
+        }
+        row.update(per_source_columns(res, bb_verdicts))
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def render() -> None:
@@ -97,8 +127,7 @@ def render() -> None:
 
     st.subheader("Column mapping")
     cols = [NONE_CHOICE] + list(df.columns)
-    # Heuristic default for `name`: first column containing 'name' or 'species'
-    name_default = 1  # first real col
+    name_default = 1
     for i, c in enumerate(df.columns, start=1):
         if any(k in c.lower() for k in ("scientific", "species_name", "taxon", "name")):
             name_default = i
@@ -120,49 +149,36 @@ def render() -> None:
         placeholder="e.g. Sander's List 2024",
     )
 
-    can_analyze = name_col != NONE_CHOICE
-    if not can_analyze:
+    if name_col == NONE_CHOICE:
         st.warning("Map a name column to enable analysis.")
         return
+
+    backbones = backbone.registered()
+    if backbones:
+        st.success(
+            "Your checklists will also get a column pair each: "
+            + ", ".join(f"`{bb_id}_status`" for bb_id in backbones)
+        )
+    else:
+        st.caption(
+            "Tip: load your own backbone on the **Your own checklists** page and "
+            "it gets its own columns in this report too."
+        )
 
     if not st.button("Analyze", type="primary"):
         return
 
     # ---- run diff ----
-    index = build_search_index()
-
-    categories: list[str] = []
-    canonicals: list[str] = []
-    syn_types: list[str] = []
-    details: list[str] = []
-    for v in df[name_col].tolist():
-        cat, canon, syn_t, detail = _diff_row(v, index)
-        categories.append(cat)
-        canonicals.append(canon)
-        syn_types.append(syn_t)
-        details.append(detail)
-
-    result = df.copy()
-    result["diff_category"] = categories
-    result["matched_accepted_name"] = canonicals
-    result["synonym_type"] = syn_types
-    result["match_notes"] = details
+    with st.spinner("Resolving names against every source…"):
+        report = build_report(df[name_col].tolist())
+    result = pd.concat([df.reset_index(drop=True), report], axis=1)
 
     # ---- summary ----
     st.divider()
-    st.subheader(
-        f"Diff summary — {authority_label or 'authority'} ({len(result)} rows)"
-    )
-    counts = pd.Series(categories).value_counts().to_dict()
-    summary_labels = [
-        ("matched_accepted", "Matched (accepted)", "#2e7d32"),
-        ("matched_synonym", "Matched (synonym)", "#1565c0"),
-        ("contested", "Contested", "#ef6c00"),
-        ("missing", "Missing", "#c62828"),
-        ("unparseable", "Unparseable", "#546e7a"),
-    ]
-    summary_cols = st.columns(len(summary_labels))
-    for col, (key, label, color) in zip(summary_cols, summary_labels):
+    st.subheader(f"Diff summary — {authority_label or 'authority'} ({len(result)} rows)")
+    counts = result["diff_category"].value_counts().to_dict()
+    summary_cols = st.columns(len(CATEGORIES))
+    for col, (key, label, color) in zip(summary_cols, CATEGORIES):
         n = counts.get(key, 0)
         with col:
             st.markdown(
@@ -174,34 +190,59 @@ def render() -> None:
                 unsafe_allow_html=True,
             )
 
-    # Full report download (once, at the top)
+    source_ids = list(SOURCES) + list(backbones)
+    st.caption(
+        "Every row carries `contest_class`, `contest_reason`, `description_year`, "
+        "and a `_status` / `_accepted_name` pair for each of: "
+        + ", ".join(f"`{s}`" for s in source_ids)
+        + ". `not_in_source` means that source has no record of the binomial."
+    )
+
     fname_base = (authority_label or "authority").replace(" ", "_").lower()
-    _download_button(result, f"summary_{fname_base}.csv", "Download full diff CSV")
+    _download_button(result, f"summary_{fname_base}.csv",
+                     "Download full diff CSV", key="dl_full")
+
+    # ---- why-contested roll-up ----
+    contested = result[result["diff_category"] == "contested"]
+    if not contested.empty:
+        st.markdown("#### Why the contested names are contested")
+        breakdown = (
+            contested.groupby("contest_class").size()
+            .rename_axis("contest_class").reset_index(name="names")
+        )
+        st.dataframe(breakdown, hide_index=True, use_container_width=True)
+        st.caption(
+            "`status_conflict` — some source calls the name accepted, another "
+            "calls it a synonym. `parent_conflict` — all agree it is a synonym, "
+            "of different species. `parent_contested` — the name is fine, the "
+            "species it belongs to is disputed. Full rules on the Data sources page."
+        )
 
     # ---- category panels ----
+    per_source_cols = [c for c in result.columns
+                       if c.endswith("_status") or c.endswith("_accepted_name")]
     sections: list[tuple[str, str, list[str]]] = [
         ("matched_accepted", "✓ Matched (accepted names)",
-         ["matched_accepted_name"]),
+         ["matched_accepted_name", "description_year", "cites_appendix"]),
         ("matched_synonym", "↻ Matched (as synonyms)",
-         ["matched_accepted_name", "synonym_type", "match_notes"]),
+         ["matched_accepted_name", "synonym_type", "description_year"]),
         ("contested", "⚠ Contested",
-         ["matched_accepted_name"]),
-        ("missing", "✗ Missing",
-         []),
-        ("unparseable", "— Unparseable",
-         ["match_notes"]),
+         ["normalized_binomial", "contest_class", "contest_reason"]),
+        ("missing", "✗ Missing", ["normalized_binomial"]),
+        ("unparseable", "— Unparseable", ["match_notes"]),
     ]
     for key, title, extra_cols in sections:
         subset = result[result["diff_category"] == key]
         if subset.empty:
             continue
         with st.expander(f"{title} · {len(subset)}"):
-            # Show the original name col first, then any useful extras
             display_cols = [name_col] + extra_cols
-            # Include user-mapped optional fields for context
             for opt_col in [authority_col, cites_col, distribution_col, notes_col]:
                 if opt_col != NONE_CHOICE and opt_col not in display_cols:
                     display_cols.append(opt_col)
+            if key in ("matched_accepted", "matched_synonym", "contested"):
+                display_cols += per_source_cols
             display_cols = [c for c in display_cols if c in subset.columns]
             st.dataframe(subset[display_cols], hide_index=True, use_container_width=True)
-            _download_button(subset, f"{key}_{fname_base}.csv", f"Download {key} CSV")
+            _download_button(subset, f"{key}_{fname_base}.csv",
+                             f"Download {key} CSV", key=f"dl_{key}")

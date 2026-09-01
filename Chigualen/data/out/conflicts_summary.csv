@@ -1,23 +1,21 @@
 category,key,count,note
-contest_rows,parent_conflict,23415,9164 distinct binomials in this class
+contest_rows,parent_contested,13243,5498 distinct binomials in this class
 contest_rows,status_conflict,13227,3922 distinct binomials in this class
+contest_rows,parent_conflict,10172,3666 distinct binomials in this class
 synonym_type_disagreement,Mixed (homotypic vs heterotypic across sources),423,See Output A rows where synonym_type_consensus == 'Mixed'
 synonym_type_coverage,Unknown (no source classified),3808,Only CITES PDF / WFO / Unplaced sources; user_synonyms classifies.
 synonym_type_coverage,Homotypic,19212,
 synonym_type_coverage,Heterotypic,13109,
 synonym_type_coverage,Orthographic variant,15,
 synonym_type_coverage,Nomenclatural,460,
-per_source_counts,wcvp.accepted,33378,
-per_source_counts,wcvp.synonym_of,57385,
+per_source_counts,wcvp.accepted,33734,
+per_source_counts,wcvp.synonym_of,57672,
 per_source_counts,wfo.accepted,33128,
 per_source_counts,wfo.synonym_of,63737,
 per_source_nonstandard_status,wfo: Unchecked,6130,Raw status value preserved in raw_extras — mapped to Unknown in synonym_type.
-per_source_counts,cites_csv.accepted,29347,
-per_source_counts,cites_csv.synonym_of,0,
-per_source_counts,cites_pdf.accepted,0,
-per_source_counts,cites_pdf.synonym_of,12746,
-per_source_counts,user_synonyms.accepted,0,
-per_source_counts,user_synonyms.synonym_of,23369,
+per_source_counts,cites_csv.unavailable,0,Chigualen/data/clean/cites_csv.csv not present — rebuild this source to include it
+per_source_counts,cites_pdf.unavailable,0,Chigualen/data/clean/cites_pdf.csv not present — rebuild this source to include it
+per_source_counts,user_synonyms.unavailable,0,Chigualen/data/clean/user_synonyms.csv not present — rebuild this source to include it
 unique_to_one_source,wcvp,2064,Rows in Output A backed by only this source.
 unique_to_one_source,wfo,2028,Rows in Output A backed by only this source.
 unique_to_one_source,cites_csv,75,Rows in Output A backed by only this source.

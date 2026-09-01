@@ -7,20 +7,28 @@ Complements the per-row data already in contested_names.csv.
 from __future__ import annotations
 
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _sources import PIPELINE_ORDER  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 CLEAN_DIR = ROOT / "Chigualen" / "data" / "clean"
 OUT_DIR = ROOT / "Chigualen" / "data" / "out"
 
-SOURCES = ["wcvp", "wfo", "cites_csv", "cites_pdf", "user_synonyms"]
+SOURCES = list(PIPELINE_ORDER)
 
 
 def main() -> int:
-    df_a = pd.read_csv(OUT_DIR / "orchid_synonyms_consolidated.csv",
+    # Output A is the *long* table. `orchid_synonyms_consolidated.csv` is the
+    # wide pivot that 08 writes afterwards and has neither `relation` nor
+    # `synonym_type_consensus`, so reading it here used to fail outright on a
+    # clean run — 07 comes before 08.
+    df_a = pd.read_csv(OUT_DIR / "orchid_synonyms_long.csv",
                        dtype=str, keep_default_na=False)
     df_b = pd.read_csv(OUT_DIR / "contested_names.csv",
                        dtype=str, keep_default_na=False)
@@ -77,7 +85,19 @@ def main() -> int:
     # Per-source coverage (from cleaned inputs, not consolidated)
     # ------------------------------------------------------------------
     for source in SOURCES:
-        df = pd.read_csv(CLEAN_DIR / f"{source}.csv", dtype=str, keep_default_na=False)
+        clean_path = CLEAN_DIR / f"{source}.csv"
+        if not clean_path.exists():
+            # The raw inputs of three sources are not committed, so a checkout
+            # can legitimately have only some cleaned files. Report the gap
+            # instead of failing the whole summary.
+            rows.append({
+                "category": "per_source_counts",
+                "key": f"{source}.unavailable",
+                "count": 0,
+                "note": f"{clean_path.relative_to(ROOT)} not present — rebuild this source to include it",
+            })
+            continue
+        df = pd.read_csv(clean_path, dtype=str, keep_default_na=False)
         acc_count = int((df["relation"] == "accepted").sum())
         syn_count = int((df["relation"] == "synonym_of").sum())
         # distinct taxon_status values observed (via raw_extras, captured when
