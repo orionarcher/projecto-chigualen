@@ -14,6 +14,11 @@ __pycache__/
 Chigualen/data/raw/*
 Chigualen/data/clean/
 !Chigualen/data/raw/README.md
+# The three sources that cannot be downloaded, as delivered. 5.6 MB compressed,
+# so the repo stays self-contained: clone + unpack + run the pipeline.
+!Chigualen/data/raw/_originals/
+Chigualen/data/raw/_originals/*
+!Chigualen/data/raw/_originals/Chigualen.rar
 Chigualen/*.csv
 Chigualen/*.pdf
 Chigualen/*.zip

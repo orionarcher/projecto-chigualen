@@ -33,9 +33,10 @@ synonym pairs resolve into it; 12,319 binomials are held out as contested.
 99.2% of species carry a description year.
 
 Where each raw file came from, with checksums, is inventoried in
-[`Chigualen/data/raw/README.md`](Chigualen/data/raw/README.md). The raw data
-itself is not committed — it is ~330 MB and the two CITES files carry
-redistribution terms.
+[`Chigualen/data/raw/README.md`](Chigualen/data/raw/README.md). Three of the
+five sources cannot be downloaded from anywhere, so they are committed as
+`Chigualen/data/raw/_originals/Chigualen.rar` (5.6 MB) — the repository is
+self-contained and every output here can be regenerated from a fresh clone.
 
 **App** — a Streamlit app (`app/`) that reads the consolidated outputs and
 offers:
@@ -95,21 +96,29 @@ pip install -r requirements.txt
 streamlit run app/app.py
 ```
 
-Open http://localhost:8501.
+Open http://localhost:8501. `requirements.txt` is the **app runtime only** —
+`streamlit` and `pandas`. Running the pipeline needs a PDF engine as well:
+
+```bash
+pip install -r requirements-pipeline.txt
+```
 
 ## Regenerating the pipeline
 
-The raw source data is not committed (~330 MB). Two sources download
-themselves; the other three must be placed by hand — see
-[`Chigualen/data/raw/README.md`](Chigualen/data/raw/README.md) for exactly which
-file goes where.
+From a fresh clone, everything needed is either committed or downloadable:
 
 ```bash
-# download raw data
+pip install -r requirements-pipeline.txt
+
+# the three sources that cannot be downloaded, out of the committed archive
+unar -o Chigualen/data/raw/_originals Chigualen/data/raw/_originals/Chigualen.rar
+cp "Chigualen/data/raw/_originals/Chigualen/cites_listings_2026-04-22 23_02_comma_separated.csv" Chigualen/data/raw/cites_listings.csv
+cp "Chigualen/data/raw/_originals/Chigualen/CITES Appendix II Orchid Checklist 2022_EN.pdf"      Chigualen/data/raw/cites_appendix.pdf
+cp  Chigualen/data/raw/_originals/Chigualen/full_synonyms_df.csv                                 Chigualen/data/raw/user_synonyms.csv
+
+# the two that do
 bash scripts/00_download_wcvp.sh           # Kew WCVP (~85 MB zip)
 Rscript scripts/00_download_wfo.R          # World Flora Online (or let 05 fetch it)
-# place cites_listings.csv, cites_appendix.pdf and user_synonyms.csv
-# in Chigualen/data/raw/ — see that directory's README
 
 # clean + consolidate
 python3 scripts/01_clean_wcvp.py

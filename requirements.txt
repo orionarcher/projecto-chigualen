@@ -1,5 +1,7 @@
-pandas>=2.0
-pymupdf>=1.24
-pdfplumber>=0.11
-unidecode>=1.3
+# App runtime. This is what a host installs to serve app/app.py — keep it
+# minimal so deploys are fast and have little to go wrong.
+#
+# The pipeline needs more (a PDF engine); see requirements-pipeline.txt. Nothing
+# under app/ imports it, so it is deliberately not here.
 streamlit>=1.36
+pandas>=2.0

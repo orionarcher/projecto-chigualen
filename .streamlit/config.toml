@@ -1,0 +1,14 @@
+# Committed so a deployed instance looks and behaves the same as a local one.
+
+[server]
+# The ingest page accepts authority checklists. A national list is a few MB;
+# 200 (the default) only invites someone to upload something that will not
+# finish resolving.
+maxUploadSize = 50
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"
+primaryColor = "#2e7d32"

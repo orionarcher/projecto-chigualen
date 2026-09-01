@@ -1,13 +1,17 @@
 # Raw sources
 
-Everything the pipeline consumes, gathered in one place. **This directory is
-not committed** — it is ~330 MB and two of the files carry redistribution
-terms. This README is committed so the inventory, the provenance and the
-checksums survive in git even though the bytes do not.
+Everything the pipeline consumes, gathered in one place.
 
-Two sources download themselves (`scripts/00_download_wcvp.sh`, the Zenodo
-fallback in `scripts/05_clean_wfo.py`). The other three cannot be fetched
-and must be placed by hand — they arrived in `_originals/Chigualen.rar`.
+Two sources download themselves (`scripts/00_download_wcvp.sh`, and the Zenodo
+fallback built into `scripts/05_clean_wfo.py`). The other three cannot be
+fetched from anywhere — so **`_originals/Chigualen.rar` is committed**. At
+5.6 MB it makes the repository self-contained: clone it, unpack the archive,
+run the pipeline, and you get the same outputs.
+
+The unpacked data (~330 MB) is not committed — it is reconstructible from the
+archive and the two downloads. This README records what every file is, where it
+came from, and its SHA-256, so provenance survives in git even where the bytes
+do not.
 
 ## Inventory
 
@@ -108,7 +112,6 @@ Then run the pipeline as described in the top-level README.
 | `cites_appendix.pdf` | UNEP-WCMC and RBG Kew, 2022 — check before redistributing |
 | `user_synonyms.csv` | project-internal |
 
-The two CITES files are why this directory stays out of git. If the team
-decides redistribution is fine, `_originals/Chigualen.rar` compresses all
-three hand-placed sources into 5.6 MB and would make the repo fully
-self-contained on its own.
+`_originals/Chigualen.rar` is committed on the project's decision, so the
+repository stands alone. The two CITES files inside it are the ones to check
+before redistributing further — publishing this repository publishes them.

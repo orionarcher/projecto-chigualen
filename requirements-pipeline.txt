@@ -1,0 +1,6 @@
+# Everything the app needs, plus what only the pipeline scripts use.
+#     pip install -r requirements-pipeline.txt
+-r requirements.txt
+
+# scripts/03_parse_cites_pdf.py reads the CITES checklist's text layer by font.
+pymupdf>=1.24
