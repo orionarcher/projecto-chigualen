@@ -321,13 +321,16 @@ def main() -> int:
         extras_by = {s: self_rows[x].get(s, [{}])[0].get("raw_extras", "")
                      for s in SOURCES if self_rows[x].get(s)}
 
-        # WCVP's accepted-name id: prefer this binomial's own record, but a
-        # synonym record pointing here also names it, so use that as a fallback
-        # for species that no source emits an explicit `accepted` row for.
+        # WCVP's id for this binomial: prefer its own record, but a synonym
+        # record pointing here also names the accepted taxon's id, which is the
+        # only handle on the ~200 species WCVP files under a name it does not
+        # itself publish a record for. Without the fallback they lose their
+        # POWO link entirely.
         wcvp_acc_id_by = _first_by_source(self_rows, x, "wcvp_plant_name_id")
         if not any(wcvp_acc_id_by.values()):
             wcvp_acc_id_by = _first_by_source(
                 rows_by_binomial, x, "wcvp_accepted_plant_name_id")
+            wcvp_id_by = wcvp_acc_id_by
 
         # Genus and species are a property of the binomial itself. Sources may
         # leave them blank (the CITES PDF does for accepted names); derive them
@@ -402,6 +405,8 @@ def main() -> int:
         wcvp_id_by = self_field(syn, "wcvp_plant_name_id")
         wcvp_ipni_by = self_field(syn, "wcvp_ipni_id")
         wfo_id_by = self_field(syn, "wfo_taxon_id")
+        firstpub_by = self_field(syn, "first_published")
+        pop_by = self_field(syn, "place_of_publication")
         extras_by = {s: self_rows[syn].get(s, [{}])[0].get("raw_extras", "")
                      for s in SOURCES if self_rows[syn].get(s)}
         syn_genus, _, syn_species = syn.partition(" ")
@@ -426,6 +431,8 @@ def main() -> int:
             "wcvp_plant_name_id": pick_best(wcvp_id_by),
             "wcvp_ipni_id": pick_best(wcvp_ipni_by),
             "wfo_taxon_id": pick_best(wfo_id_by),
+            "first_published": pick_best(firstpub_by),
+            "place_of_publication": pick_best(pop_by),
             "raw_extras": merge_extras(extras_by),
             "description_year": year_for(syn, syn_auth_by, syn_full_by),
             "sources": "|".join(srcs_with_pair),

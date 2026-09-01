@@ -28,7 +28,14 @@ app's **Data sources** page.
 
 The consolidated wide table lives at
 [`Chigualen/data/out/orchid_synonyms_consolidated.csv`](Chigualen/data/out/orchid_synonyms_consolidated.csv):
-31,498 species, one row each, with comma-separated synonyms and sources.
+31,300 species, one row each, with comma-separated synonyms and sources. 35,572
+synonym pairs resolve into it; 12,319 binomials are held out as contested.
+99.2% of species carry a description year.
+
+Where each raw file came from, with checksums, is inventoried in
+[`Chigualen/data/raw/README.md`](Chigualen/data/raw/README.md). The raw data
+itself is not committed — it is ~330 MB and the two CITES files carry
+redistribution terms.
 
 **App** — a Streamlit app (`app/`) that reads the consolidated outputs and
 offers:
@@ -62,6 +69,9 @@ and written to `contested_names.csv` instead, one row per source.
 | `parent_conflict` | all sources call it a synonym, but name different parents | `accepted_name` on the synonym rows |
 | `parent_contested` | all sources agree on the parent, but the parent is itself contested | nothing on this name — inherited |
 
+In this build: 4,052 `status_conflict`, 3,031 `parent_conflict`, 5,236
+`parent_contested`.
+
 **A disagreement about `synonym_type` never makes a name contested.** Homotypic
 vs heterotypic disagreements stay in the consolidated table with
 `synonym_type_consensus = Mixed`. Authority strings and infraspecific taxa are
@@ -76,7 +86,7 @@ The rules themselves live once in `contest_class_reference.csv`.
 Contested names are also linked back from the species they were proposed under,
 via the `contested_synonyms` column of the wide table — so searching *Stelis
 ariasii* now shows that *Anathallis ariasii*, which CITES still lists as
-accepted, is the same plant.
+accepted, is the same plant. 3,985 species carry at least one such link.
 
 ## Running locally
 
@@ -89,14 +99,17 @@ Open http://localhost:8501.
 
 ## Regenerating the pipeline
 
-The raw source data is not committed (1.4 GB of PDFs, zips, and CSVs). To
-rebuild from scratch:
+The raw source data is not committed (~330 MB). Two sources download
+themselves; the other three must be placed by hand — see
+[`Chigualen/data/raw/README.md`](Chigualen/data/raw/README.md) for exactly which
+file goes where.
 
 ```bash
 # download raw data
 bash scripts/00_download_wcvp.sh           # Kew WCVP (~85 MB zip)
-Rscript scripts/00_download_wfo.R          # World Flora Online
-# (manually place the CITES PDF + CITES listings CSV + user synonyms CSV in Chigualen/)
+Rscript scripts/00_download_wfo.R          # World Flora Online (or let 05 fetch it)
+# place cites_listings.csv, cites_appendix.pdf and user_synonyms.csv
+# in Chigualen/data/raw/ — see that directory's README
 
 # clean + consolidate
 python3 scripts/01_clean_wcvp.py
@@ -109,9 +122,7 @@ python3 scripts/07_report_conflicts.py
 python3 scripts/08_wide_format.py
 ```
 
-Only WCVP and WFO download themselves; the three other raw inputs must be placed
-by hand. `scripts/09_repair_outputs.py` exists because of that asymmetry — see
-below.
+`03` takes a few minutes (it parses 521 PDF pages by font); the rest are fast.
 
 ## Adding a data source
 
@@ -130,6 +141,23 @@ Consolidation, the conflict classes, the species cards and the batch export all
 read the registry. A historical edition enters as its own source rather than
 replacing the current one, so an edition-to-edition disagreement surfaces as an
 ordinary `status_conflict`.
+
+## Data hygiene
+
+Two classes of malformed name have been cleared out of the CITES PDF parser:
+
+- **250 ligature binomials.** The checklist is LaTeX-typeset, so its text layer
+  carries real ligature codepoints — *Aerangis divitiﬂora* was spelled with
+  U+FB02, not `fl`, and was unsearchable. `norm_text` now folds them.
+- **267 trinomials filed as species.** The parser wrote
+  `Aerangis luteoalba var. rhodosticta` into `accepted_name`, where every other
+  cleaner writes a strict binomial, so infraspecific taxa were consolidated as
+  though they were species in their own right. They now collapse onto their
+  binomial, with the rank and epithet kept in the `infraspecific_*` columns and
+  the full string in `*_name_full`.
+
+All 31,300 accepted names are now two-token binomials whose `genus` and
+`species` columns match the name.
 
 ## Tests
 
@@ -155,6 +183,8 @@ pipeline from a checkout, since three of the five raw inputs are not committed.
 
 ## `scripts/09_repair_outputs.py`
 
+A fallback for when the full pipeline cannot be run.
+
 Until the provenance fix in `06_consolidate.py`, a binomial's own metadata was
 harvested from *any* cleaned record that named it — including records that named
 it only as some other name's accepted parent. Those records describe the
@@ -163,11 +193,12 @@ IPNI id, WFO id, basionym and publication data: *Stelis ariasii* was filed under
 genus *Anathallis*, *Vanda falcata* under *Holcoglossum*, and both linked to the
 wrong POWO page.
 
-`06_consolidate.py` no longer does this, but a full rebuild needs the raw inputs
-of all five sources and three of them are not committed. `09_repair_outputs.py`
-repairs the committed artifacts instead, re-deriving every self-scoped field from
-the two backbones that supply them (WCVP and WFO — both reproducible), and
-backfilling the columns that explain `contest_class`:
+`06_consolidate.py` no longer does this, and the committed outputs are now a
+real five-source rebuild. But three of the five raw inputs cannot be downloaded,
+so a checkout that has only WCVP and WFO still cannot rebuild. This script
+repairs the committed artifacts in place instead, re-deriving every self-scoped
+field from the two backbones that *are* reproducible and backfilling the columns
+that explain `contest_class`:
 
 ```bash
 bash scripts/00_download_wcvp.sh && python3 scripts/01_clean_wcvp.py
@@ -177,16 +208,20 @@ python3 scripts/07_report_conflicts.py
 python3 scripts/08_wide_format.py
 ```
 
-After a full five-source rebuild it reports `0 rows changed`, which doubles as a
-regression check on 06.
+Run against the output of a full rebuild it reports **`rows changed: 0`** and
+**`0 binomials moved to a more precise class`**. That is a standing check that
+the two implementations agree — three genuine divergences were found and fixed
+this way, in both directions:
 
-**Known remaining issue.** 489 accepted binomials in the shipped data are
-malformed — 250 carry PDF ligature codepoints (`divitiﬂora` rather than
-`divitiflora`) and 267 are infraspecific names that leaked in as binomials. All
-489 come from `03_parse_cites_pdf.py`. `norm_text` now folds ligatures, so a
-rerun of that parser plus 06 and 08 clears them; they cannot be repaired from the
-committed outputs alone because the synonym rows pointing at them would have to
-be re-consolidated.
+- `06` left `wcvp_plant_name_id` blank for ~200 species WCVP files only as the
+  parent of a synonym, losing their POWO link. It now uses the accepted-taxon id
+  those rows carry.
+- `06` recorded no `first_published` or `place_of_publication` on synonym rows
+  even though it read the field to derive `description_year`. It now stores both.
+- `09` blanked fields that only the CITES listings supply (`taxon_rank` for
+  species neither backbone holds) and overwrote description years the backbones
+  cannot see. It now clears a field only when the value demonstrably came off a
+  backbone row describing a different name.
 
 ## Attribution
 

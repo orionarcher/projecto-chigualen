@@ -8,9 +8,12 @@ __pycache__/
 .venv/
 .direnv/
 
-# Raw + intermediate data — large and regenerable via the pipeline
-Chigualen/data/raw/
+# Raw + intermediate data — large, and the CITES files carry redistribution terms
+# (glob the contents, not the directory — git cannot un-ignore a file inside an
+# excluded directory, and the inventory below has to stay tracked)
+Chigualen/data/raw/*
 Chigualen/data/clean/
+!Chigualen/data/raw/README.md
 Chigualen/*.csv
 Chigualen/*.pdf
 Chigualen/*.zip

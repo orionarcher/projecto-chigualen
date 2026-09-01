@@ -188,8 +188,11 @@ def repair_contested() -> None:
 
     per_binomial: dict[str, dict] = {}
     for binomial, group in df.groupby("binomial", sort=False):
-        syn_rows = group[group["source_says_relation"] == "synonym_of"]
-        accepted_in = sorted(set(group[group["source_says_relation"] == "accepted"]["source"]))
+        # `accepted+synonym_of` means one source says both — it counts on each
+        # side, exactly as 06 counts it when it writes the file.
+        relation = group["source_says_relation"]
+        syn_rows = group[relation.str.contains("synonym_of", regex=False)]
+        accepted_in = sorted(set(group[relation.str.startswith("accepted")]["source"]))
         synonym_in = sorted(set(syn_rows["source"]))
         parents: list[str] = []
         for value in syn_rows["source_says_accepted_parent"]:
@@ -320,6 +323,16 @@ def main() -> int:
 
         row_changed = False
 
+        # Only WCVP and WFO can contaminate — they are the sources that emit
+        # synonym rows carrying rich self-scoped metadata, and only the rows
+        # where this binomial is *not* the subject could have leaked into it.
+        leaky_rows: list[dict] = []
+        for src in BACKBONES:
+            own = self_idx[src].get(subject, [])
+            own_ids = {id(r) for r in own}
+            leaky_rows += [r for r in mention_idx[src].get(subject, [])
+                           if id(r) not in own_ids]
+
         # ---- scalar self-scoped fields ----
         for field in REPAIR_FIELDS:
             new = ""
@@ -327,15 +340,24 @@ def main() -> int:
                 new = first_nonempty(self_idx[source].get(subject, []), field)
                 if new:
                     break
+            if not new and field == "wcvp_plant_name_id":
+                # WCVP files some species only as the parent of a synonym; those
+                # rows still name the accepted taxon's id.
+                new = first_nonempty(
+                    mention_idx["wcvp"].get(subject, []), "wcvp_accepted_plant_name_id")
             if not new and field in ("genus", "species"):
                 # Never leave a hole: the binomial itself is authoritative.
                 genus, _, species = subject.partition(" ")
                 new = genus if field == "genus" else species
-            if not new and field == "wcvp_plant_name_id":
-                # Species that no source emits an explicit accepted row for:
-                # a synonym record pointing here still names the right id.
-                new = first_nonempty(
-                    mention_idx["wcvp"].get(subject, []), "wcvp_accepted_plant_name_id")
+            if not new:
+                # Nothing to put here. Only clear the field if its current value
+                # demonstrably came off a backbone row describing some *other*
+                # name; otherwise a lower-priority source supplied it honestly
+                # (the CITES listings carry `taxon_rank` for species neither
+                # backbone holds) and blanking it would be a regression.
+                existing = rec.get(field, "")
+                if not existing or existing not in {r.get(field, "") for r in leaky_rows}:
+                    continue
             if new != rec.get(field, ""):
                 field_changes[field] += 1
                 rec[field] = new
@@ -378,14 +400,17 @@ def main() -> int:
             blob = {}
         rebuilt = {k: v for k, v in blob.items() if k not in ALL_BACKBONE_EXTRA_KEYS}
         for source in BACKBONES:
-            for own_rec in self_idx[source].get(subject, []):
-                try:
-                    own_blob = json.loads(own_rec.get("raw_extras", "") or "{}")
-                except ValueError:
-                    continue
-                for k, v in own_blob.items():
-                    if k in BACKBONE_EXTRA_KEYS[source] and k not in rebuilt:
-                        rebuilt[k] = v
+            # First self record only, matching 06's `self_rows[x][s][0]`.
+            own = self_idx[source].get(subject, [])
+            if not own:
+                continue
+            try:
+                own_blob = json.loads(own[0].get("raw_extras", "") or "{}")
+            except ValueError:
+                continue
+            for k, v in own_blob.items():
+                if k in BACKBONE_EXTRA_KEYS[source] and k not in rebuilt:
+                    rebuilt[k] = v
         new_extras = (json.dumps(rebuilt, ensure_ascii=False, sort_keys=True, default=str)
                       if rebuilt else "")
         if new_extras != rec.get("raw_extras", ""):
@@ -398,7 +423,12 @@ def main() -> int:
             authority, name_full = rec["accepted_authority"], rec["accepted_name_full"]
         else:
             authority, name_full = rec["synonym_authority"], rec["synonym_name_full"]
+        # 06 can see every source's authority string and so finds years this
+        # cannot — the CITES listings write 'Archila, 2010' where WFO's
+        # namePublishedIn has no year at all. Never overwrite a year with a blank.
         year = description_year(rec["first_published"], authority, name_full)
+        if not year:
+            year = rec.get("description_year", "")
         if year != rec.get("description_year", ""):
             field_changes["description_year"] += 1
             rec["description_year"] = year

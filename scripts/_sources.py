@@ -43,7 +43,12 @@ WCVP = Source(
         "(http://sftp.kew.org/pub/data-repositories/WCVP/wcvp.zip), file "
         "`wcvp_names.csv`, pipe-delimited, filtered to `family == 'Orchidaceae'`."
     ),
-    edition="WCVP, downloaded copy in `Chigualen/data/raw/wcvp/`",
+    edition=(
+        "WCVP release of 2026-06-04 (`wcvp.zip`, archived at "
+        "`Chigualen/data/raw/wcvp/`). The original build used a pre-filtered "
+        "orchid extract dated 2024-06-15, kept for reference at "
+        "`Chigualen/data/raw/_originals/orchid_wcvp_2024-06-15.csv`."
+    ),
     licence="CC BY 4.0",
     contributes=[
         "Accepted-vs-synonym status for the largest share of names",
@@ -69,11 +74,16 @@ WFO = Source(
     kind="backbone",
     one_liner="The WFO Darwin Core backbone — a second, independent global checklist.",
     origin=(
-        "WFO DwC backbone (`classification.txt`), fetched by "
-        "`scripts/00_download_wfo.R` or the Zenodo mirror fallback built into "
+        "WFO DwC backbone (`classification.csv`) out of `_DwC_backbone_R.zip` "
+        "on the World Flora Online Plant List Zenodo record, fetched by "
+        "`scripts/00_download_wfo.R` or by the Zenodo fallback built into "
         "`scripts/05_clean_wfo.py`, filtered to Orchidaceae."
     ),
-    edition="WFO DwC backbone, Zenodo mirror record 18007552",
+    edition=(
+        "World Flora Online Plant List 2025-12 — Zenodo, "
+        "DOI 10.5281/zenodo.18007552, file `_DwC_backbone_R.zip` (121 MB), "
+        "published 2025-12-21, CC0."
+    ),
     licence="CC0 1.0",
     contributes=[
         "An independent second opinion on accepted-vs-synonym status",
@@ -104,14 +114,13 @@ CITES_CSV = Source(
         "or III, with their annotations and range states."
     ),
     origin=(
-        "A CITES species-listings export placed at "
-        "`Chigualen/data/raw/cites_listings.csv` and filtered to "
-        "`Family == 'Orchidaceae'`. Its columns (`Id`, `Family`, `Genus`, "
-        "`Species`, `Subspecies`, `Author`, `Rank`, `Listing`, `Full note`, "
-        "`Listed under`, `Party`, and the `*_Distribution*` blocks) are the "
-        "shape produced by the Species+ / CITES Checklist export."
+        "A Species+ / CITES Checklist comma-separated export, delivered as "
+        "`cites_listings_2026-04-22 23_02_comma_separated.csv` and placed at "
+        "`Chigualen/data/raw/cites_listings.csv`. The export was already "
+        "restricted to Orchidaceae at download time — all 29,347 rows pass the "
+        "cleaner's `Family == 'Orchidaceae'` filter."
     ),
-    edition="listings export committed by the project team",
+    edition="Species+ export taken 2026-04-22, 29,347 orchid listings",
     licence="CITES / UNEP-WCMC terms of use",
     contributes=[
         "The CITES appendix (I / II / III) attached to a name",
@@ -135,7 +144,6 @@ CITES_CSV = Source(
         "the botanical backbones have since sunk it into another genus — which is "
         "the single most common cause of a `status_conflict`."
     ),
-    provenance_confirmed=False,
 )
 
 CITES_PDF = Source(
@@ -152,7 +160,10 @@ CITES_PDF = Source(
         "'ALL NAMES → ACCEPTED NAME' table. Parsed straight out of the PDF text "
         "layer by font (italic = name, bold italic = accepted binomial)."
     ),
-    edition="2022 edition",
+    edition=(
+        "2022 edition — `CITES Appendix II Orchid Checklist 2022_EN.pdf`, "
+        "521 pages, archived at `Chigualen/data/raw/cites_appendix.pdf`."
+    ),
     licence="CITES / UNEP-WCMC / RBG Kew terms of use",
     contributes=[
         "Synonym → accepted-name pairs as used *for CITES purposes*",
@@ -181,8 +192,13 @@ USER_SYNONYMS = Source(
     label="Curated synonyms",
     kind="curated",
     one_liner="A hand-curated synonym list contributed by the project team.",
-    origin="`Chigualen/data/raw/user_synonyms.csv`, supplied by the project team.",
-    edition="team-maintained",
+    origin=(
+        "`full_synonyms_df.csv`, supplied by the project team and placed at "
+        "`Chigualen/data/raw/user_synonyms.csv`. Three columns — "
+        "`accepted_name`, `synonym_name`, `status` — where `status` is "
+        "`Homotypic_Synonym` or `Heterotypic_Synonym`."
+    ),
+    edition="team-maintained; 23,369 pairs (8,922 homotypic, 14,447 heterotypic)",
     licence="project-internal",
     contributes=[
         "Synonym pairs with explicit `Homotypic_Synonym` / `Heterotypic_Synonym` typing",

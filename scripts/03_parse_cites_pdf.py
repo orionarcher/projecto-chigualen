@@ -40,7 +40,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from _normalize import (  # noqa: E402
     SCHEMA,
     blank_row,
-    binomial,
+    binomial as to_binomial,
     norm_text,
     pack_extras,
     strip_hybrid,
@@ -459,15 +459,23 @@ def make_row(
     out = blank_row()
 
     syn_text = clean_entry_text(synonym_entry)
-    syn_name, syn_auth, syn_rank, syn_infra = split_name_and_authority(syn_text)
-    syn_name = strip_hybrid(syn_name)
-    syn_genus, syn_species = parse_binomial_from_name(syn_name)
+    syn_parsed, syn_auth, syn_rank, syn_infra = split_name_and_authority(syn_text)
+    syn_parsed = strip_hybrid(syn_parsed)
+    syn_genus, syn_species = parse_binomial_from_name(syn_parsed)
+    # `split_name_and_authority` keeps the infraspecific tail on the name
+    # ('Aerangis luteoalba var. rhodosticta'). Every other cleaner files a
+    # strict binomial in accepted_name/synonym_name and keeps the full string in
+    # *_name_full; matching that here stops 267 trinomials being consolidated as
+    # though they were species in their own right. The rank and epithet are
+    # preserved in the infraspecific_* columns below.
+    syn_name = to_binomial(syn_genus, syn_species) or syn_parsed
 
     if accepted_entry is not None:
         acc_text = clean_entry_text(accepted_entry)
-        acc_name, acc_auth, _, _ = split_name_and_authority(acc_text)
-        acc_name = strip_hybrid(acc_name)
-        acc_genus, _ = parse_binomial_from_name(acc_name)
+        acc_parsed, acc_auth, _, _ = split_name_and_authority(acc_text)
+        acc_parsed = strip_hybrid(acc_parsed)
+        acc_genus, acc_species = parse_binomial_from_name(acc_parsed)
+        acc_name = to_binomial(acc_genus, acc_species) or acc_parsed
     else:
         acc_text = ""
         acc_name = ""
