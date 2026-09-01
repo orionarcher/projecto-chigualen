@@ -54,15 +54,28 @@ VALID_SYNONYM_TYPES = {
 
 _WS = re.compile(r"\s+")
 
+# The CITES Appendix II PDF is LaTeX-typeset, so its text layer carries real
+# ligature codepoints: 'Aerangis divitiﬂora' is spelled with U+FB02, not 'fl'.
+# NFC preserves them, which left 250 unsearchable binomials in the database.
+# Fold them explicitly rather than switching to NFKC, which would also rewrite
+# superscripts and other characters that appear in authority strings.
+_LIGATURES = str.maketrans({
+    "\ufb00": "ff", "\ufb01": "fi", "\ufb02": "fl", "\ufb03": "ffi",
+    "\ufb04": "ffl", "\ufb05": "st", "\ufb06": "st",
+    "\u0132": "IJ", "\u0133": "ij", "\u0152": "OE", "\u0153": "oe",
+    "\u00c6": "AE", "\u00e6": "ae",
+})
+
 
 def norm_text(value: Any) -> str:
-    """NFC unicode, strip, collapse internal whitespace. None/NaN → ''."""
+    """NFC unicode, fold ligatures, strip, collapse whitespace. None/NaN → ''."""
     if value is None:
         return ""
     s = str(value)
     if s.lower() in {"nan", "none"}:
         return ""
     s = unicodedata.normalize("NFC", s)
+    s = s.translate(_LIGATURES)
     s = _WS.sub(" ", s).strip()
     return s
 
@@ -121,3 +134,28 @@ def validate_frame(df) -> None:
         raise ValueError("synonym_of rows must have non-empty synonym_name")
     if (df["accepted_name"] == "").any():
         raise ValueError("every row must have non-empty accepted_name")
+
+
+_YEAR = re.compile(r"(1[6-9]\d{2}|20[0-4]\d)")
+
+
+def description_year(*candidates: Any) -> str:
+    """Pull a four-digit publication year out of the first candidate that has one.
+
+    Sources spell the year differently: WCVP's `first_published` is '(1912)',
+    the CITES listings CSV folds it into the author string
+    ('Königer, 1994'), and WFO's `namePublishedIn` buries it in a citation.
+    Callers pass the fields in the order they trust them.
+
+    Returns '' when no plausible year (1600–2049) is present.
+    """
+    for candidate in candidates:
+        text = norm_text(candidate)
+        if not text:
+            continue
+        found = _YEAR.findall(text)
+        if found:
+            # A citation can carry several years ('ed. 2, 1832 [1834]'); the
+            # earliest is the publication year, later ones are reprints/corrigenda.
+            return min(found)
+    return ""

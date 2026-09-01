@@ -18,6 +18,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "Chigualen" / "data" / "out"
+CONTESTED_PATH = OUT / "contested_names.csv"
 
 SEP = ", "  # intra-cell list separator; CSV quoting handles the commas
 
@@ -29,12 +30,15 @@ WIDE_COLS = [
     "synonym_count",
     "synonyms",
     "synonyms_detailed",
+    "contested_synonym_count",
+    "contested_synonyms",
     "accepted_name_full",
     "accepted_authority",
     "family",
     "genus",
     "species",
     "taxon_rank",
+    "description_year",
     "cites_appendix",
     "cites_full_note",
     "wcvp_plant_name_id",
@@ -65,7 +69,36 @@ def join_unique(seq) -> str:
     return SEP.join(out)
 
 
-def pivot(df_long: pd.DataFrame) -> pd.DataFrame:
+def contested_links(df_contested: pd.DataFrame) -> dict[str, str]:
+    """Map accepted species → the contested names that at least one source
+    places under it.
+
+    Contested binomials are held out of the consolidated table on purpose: the
+    sources cannot agree on them. But dropping them silently made a species look
+    as though nobody had ever proposed the name — searching *Stelis ariasii*
+    gave no hint that *Anathallis ariasii* is the same plant under a name CITES
+    still lists as accepted. Surfacing the link keeps the species card honest
+    without promoting a disputed name to a settled synonym.
+    """
+    if df_contested.empty:
+        return {}
+    claims = df_contested[
+        (df_contested["source_says_relation"] == "synonym_of")
+        & (df_contested["source_says_accepted_parent"] != "")
+    ]
+    by_parent: dict[str, list[str]] = {}
+    for _, r in claims.iterrows():
+        for parent in str(r["source_says_accepted_parent"]).split("|"):
+            parent = parent.strip()
+            if not parent:
+                continue
+            names = by_parent.setdefault(parent, [])
+            if r["binomial"] not in names:
+                names.append(r["binomial"])
+    return {parent: SEP.join(sorted(names)) for parent, names in by_parent.items()}
+
+
+def pivot(df_long: pd.DataFrame, contested_by_parent: dict[str, str] | None = None) -> pd.DataFrame:
     accepted = df_long[df_long["relation"] == "accepted"].copy()
     synonyms = df_long[df_long["relation"] == "synonym_of"].copy()
 
@@ -109,6 +142,12 @@ def pivot(df_long: pd.DataFrame) -> pd.DataFrame:
     wide["synonyms"] = wide.index.map(lambda n: syn_names.get(n, ""))
     wide["synonyms_detailed"] = wide.index.map(lambda n: syn_detailed.get(n, ""))
     wide["sources"] = wide.index.map(all_sources_for)
+
+    links = contested_by_parent or {}
+    wide["contested_synonyms"] = wide.index.map(lambda n: links.get(n, ""))
+    wide["contested_synonym_count"] = wide["contested_synonyms"].map(
+        lambda v: len(v.split(SEP)) if v else 0
+    )
     wide = wide.reset_index()
 
     # unique_to_source from the accepted row carries species-scope uniqueness;
@@ -136,10 +175,20 @@ def main() -> int:
     df_long = pd.read_csv(OUT / "orchid_synonyms_long.csv", dtype=str, keep_default_na=False)
     print(f"loaded long: {len(df_long)} rows")
 
-    wide = pivot(df_long)
+    if CONTESTED_PATH.exists():
+        df_contested = pd.read_csv(CONTESTED_PATH, dtype=str, keep_default_na=False)
+        print(f"loaded contested: {len(df_contested)} rows")
+    else:
+        df_contested = pd.DataFrame()
+        print("contested_names.csv not found — contested_synonyms will be empty")
+
+    wide = pivot(df_long, contested_links(df_contested))
     print(f"wide: {len(wide)} species-level rows")
     print(f"  with >=1 synonym: {(wide['synonym_count'].astype(int) > 0).sum()}")
     print(f"  with 0 synonyms:  {(wide['synonym_count'].astype(int) == 0).sum()}")
+    print(f"  with >=1 contested name attached: "
+          f"{(wide['contested_synonym_count'].astype(int) > 0).sum()}")
+    print(f"  with a description year: {(wide['description_year'] != '').sum()}")
 
     primary_path = OUT / "orchid_synonyms_consolidated.csv"
     wide.to_csv(primary_path, index=False)

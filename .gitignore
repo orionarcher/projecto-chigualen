@@ -8,9 +8,17 @@ __pycache__/
 .venv/
 .direnv/
 
-# Raw + intermediate data — large and regenerable via the pipeline
-Chigualen/data/raw/
+# Raw + intermediate data — large, and the CITES files carry redistribution terms
+# (glob the contents, not the directory — git cannot un-ignore a file inside an
+# excluded directory, and the inventory below has to stay tracked)
+Chigualen/data/raw/*
 Chigualen/data/clean/
+!Chigualen/data/raw/README.md
+# The three sources that cannot be downloaded, as delivered. 5.6 MB compressed,
+# so the repo stays self-contained: clone + unpack + run the pipeline.
+!Chigualen/data/raw/_originals/
+Chigualen/data/raw/_originals/*
+!Chigualen/data/raw/_originals/Chigualen.rar
 Chigualen/*.csv
 Chigualen/*.pdf
 Chigualen/*.zip
@@ -20,3 +28,6 @@ Chigualen/*.zip
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Pre-repair snapshots written by scripts/09_repair_outputs.py
+Chigualen/data/out/*.pre-repair
