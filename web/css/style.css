@@ -105,3 +105,50 @@ tr:last-child td { border-bottom: 0; }
 .bar > div { height: 100%; background: var(--accent); width: 0; transition: width .15s; }
 .linkish { background: none; border: 0; color: #58a6ff; cursor: pointer; padding: 0; font-size: inherit; }
 .muted { color: var(--dim); font-size: 0.85rem; }
+
+
+/* ---------------------------------------------------------------------------
+   Colour vocabularies as classes.
+
+   The site is served with `style-src 'self'` and no 'unsafe-inline'. That is
+   deliberate: this build's whole claim is that an uploaded checklist cannot
+   leave the browser, and a CSP that allows inline styles is a weaker fence than
+   one that does not. So nothing here may be coloured from a style attribute —
+   every colour is a class. Per-source colours are generated into
+   data/sources.css from scripts/_sources.py.
+   --------------------------------------------------------------------------- */
+
+.chip.neutral   { color: var(--dim);       background: #8b98a922; border-color: #8b98a955; }
+.chip.danger    { color: var(--contested); background: #c6282822; border-color: #c6282855; }
+
+.ty-homotypic   { color: #2e7d32; background: #2e7d3222; border-color: #2e7d3255; }
+.ty-heterotypic { color: #ad1457; background: #ad145722; border-color: #ad145755; }
+.ty-orthographic{ color: #6d4c41; background: #6d4c4122; border-color: #6d4c4155; }
+.ty-nomenclatural { color: #455a64; background: #455a6422; border-color: #455a6455; }
+.ty-mixed       { color: #ef6c00; background: #ef6c0022; border-color: #ef6c0055; }
+.ty-unknown     { color: var(--dim); background: #8b98a922; border-color: #8b98a955; }
+
+.cites-i        { color: #b71c1c; background: #b71c1c22; border-color: #b71c1c55; }
+.cites-ii       { color: #ef6c00; background: #ef6c0022; border-color: #ef6c0055; }
+.cites-iii      { color: #f9a825; background: #f9a82522; border-color: #f9a82555; }
+
+.st-accepted    { color: var(--accepted); }
+.st-synonym     { color: var(--synonym); }
+.st-contested   { color: var(--contested); }
+.st-not_in_source { color: var(--absent); }
+
+/* Diff summary tiles, one class per diff_category. */
+.stat.plain                 { border-color: var(--line); }
+.cat-matched_accepted { border-color: #2e7d3255; background: #2e7d3211; color: var(--accepted); }
+.cat-matched_synonym  { border-color: #1565c055; background: #1565c011; color: var(--synonym); }
+.cat-contested        { border-color: #ef6c0055; background: #ef6c0011; color: var(--warn); }
+.cat-missing          { border-color: #c6282855; background: #c6282811; color: var(--contested); }
+.cat-unparseable      { border-color: #5a647255; background: #5a647211; color: var(--absent); }
+.stat .n, .stat .l { color: inherit; }
+
+/* Spacing utilities, so layout never needs a style attribute either. */
+.mt-0  { margin-top: 0; }
+.mt-sm { margin-top: 12px; }
+.mt-lg { margin-top: 26px; }
+.my-sm { margin: 12px 0; }
+.page  { padding: 34px 40px; max-width: 1000px; }

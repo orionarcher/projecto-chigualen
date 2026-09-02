@@ -7,23 +7,34 @@ export const el = (html) => { const t = document.createElement('template');
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export function chip(label, colour) {
-  return `<span class="chip" style="color:${colour};background:${colour}22;border-color:${colour}55">${esc(label)}</span>`;
+/** Colours come from classes, never a style attribute — see the note in
+ *  css/style.css about the Content-Security-Policy this site is served with. */
+export function chip(label, cls = 'neutral') {
+  return `<span class="chip ${cls}">${esc(label)}</span>`;
 }
 
-export const sourceColour = (s) => index()?.sourceColours?.[s] || '#5a6472';
 export const sourceLabel = (s) => index()?.sourceLabels?.[s] || s;
 
 export const sourceChips = (value) =>
   (value || '').replace(/\|/g, ',').split(',').map(s => s.trim()).filter(Boolean)
-    .map(s => chip(s, sourceColour(s))).join('');
+    .map(s => chip(s, `src-${s}`)).join('');
 
-export const STATUS_STYLE = {
-  [STATUS.ACCEPTED]:  ['accepted',     'var(--accepted)'],
-  [STATUS.SYNONYM]:   ['synonym',      'var(--synonym)'],
-  [STATUS.CONTESTED]: ['contested',    'var(--contested)'],
-  [STATUS.ABSENT]:    ['not in source','var(--absent)'],
+export const STATUS_LABEL = {
+  [STATUS.ACCEPTED]:  'accepted',
+  [STATUS.SYNONYM]:   'synonym',
+  [STATUS.CONTESTED]: 'contested',
+  [STATUS.ABSENT]:    'not in source',
 };
+
+/** Class for a synonym type as it appears in synonyms_detailed. */
+export const typeClass = (t) => ({
+  Homotypic: 'ty-homotypic', Heterotypic: 'ty-heterotypic',
+  'Orthographic variant': 'ty-orthographic', Nomenclatural: 'ty-nomenclatural',
+  Mixed: 'ty-mixed',
+}[t] || 'ty-unknown');
+
+export const citesClass = (appendix) =>
+  ({ I: 'cites-i', II: 'cites-ii', III: 'cites-iii' }[appendix] || 'neutral');
 
 export function table(headers, rows) {
   if (!rows.length) return '';
@@ -38,10 +49,10 @@ export function table(headers, rows) {
 export function perSourcePanel(res) {
   const rows = index().sources.map(s => {
     const v = res.perSource[s];
-    const [label, colour] = STATUS_STYLE[v.status] || [v.status, 'var(--dim)'];
+    const label = STATUS_LABEL[v.status] || v.status;
     return [
       `<b>${esc(sourceLabel(s))}</b><br><span class="muted">${esc(s)}</span>`,
-      `<span style="color:${colour}">${esc(label)}</span>`,
+      `<span class="st-${esc(v.status)}">${esc(label)}</span>`,
       `<span class="sci">${esc(v.acceptedName)}</span>`,
       `<span class="muted">${esc(v.detail)}</span>`,
     ];

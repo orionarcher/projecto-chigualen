@@ -6,12 +6,13 @@
 import * as data from './data.js';
 import { el, esc, table, downloadCsv } from './ui.js';
 
+// Colours live in css/style.css as .cat-<key>; see the CSP note there.
 const CATEGORIES = [
-  ['matched_accepted', 'Matched (accepted)', 'var(--accepted)'],
-  ['matched_synonym',  'Matched (synonym)',  'var(--synonym)'],
-  ['contested',        'Contested',          'var(--warn)'],
-  ['missing',          'Missing',            'var(--contested)'],
-  ['unparseable',      'Unparseable',        'var(--absent)'],
+  ['matched_accepted', 'Matched (accepted)'],
+  ['matched_synonym',  'Matched (synonym)'],
+  ['contested',        'Contested'],
+  ['missing',          'Missing'],
+  ['unparseable',      'Unparseable'],
 ];
 const VERDICT_TO_CATEGORY = {
   accepted: 'matched_accepted', synonym: 'matched_synonym',
@@ -139,10 +140,10 @@ async function analyze(records, nameCol, label, outEl) {
 
   outEl.innerHTML = `
     <h3>Diff summary — ${esc(label || 'authority')} (${report.length.toLocaleString()} rows)</h3>
-    <div class="stats">${CATEGORIES.map(([k, l, c]) => `
-      <div class="stat" style="border-color:${c}55;background:${c}11">
-        <div class="n" style="color:${c}">${counts[k] || 0}</div>
-        <div class="l" style="color:${c}">${l}</div></div>`).join('')}</div>
+    <div class="stats">${CATEGORIES.map(([k, l]) => `
+      <div class="stat cat-${k}">
+        <div class="n">${counts[k] || 0}</div>
+        <div class="l">${l}</div></div>`).join('')}</div>
     <p class="muted">Resolved in ${ms} ms, entirely in this browser tab.
       Every row carries <code>contest_class</code>, <code>contest_reason</code>,
       <code>description_year</code> and a <code>_status</code> / <code>_accepted_name</code>
@@ -162,7 +163,7 @@ async function analyze(records, nameCol, label, outEl) {
       .filter(c => subset.some(r => r[c]));
     const det = el(`<details class="panel">
       <summary><b>${esc(title)}</b> · ${subset.length.toLocaleString()}</summary>
-      <div style="margin-top:12px">
+      <div class="mt-sm">
         ${table([nameCol, ...cols], subset.slice(0, 200).map(r =>
           [`<span class="sci">${esc(r[nameCol])}</span>`, ...cols.map(c => esc(r[c] || ''))]))}
         ${subset.length > 200 ? `<p class="muted">Showing the first 200 of

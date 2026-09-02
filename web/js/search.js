@@ -1,13 +1,7 @@
 /** Search page: query, results, species card, contested view.
  *  Browser port of app/search.py. */
 import * as data from './data.js';
-import { el, esc, chip, sourceChips, sourceColour, perSourcePanel, table } from './ui.js';
-
-const TYPE_COLOURS = {
-  Homotypic: '#2e7d32', Heterotypic: '#ad1457', 'Orthographic variant': '#6d4c41',
-  Nomenclatural: '#455a64', Mixed: '#ef6c00', Unknown: '#8b98a9',
-};
-const CITES_COLOURS = { I: '#b71c1c', II: '#ef6c00', III: '#f9a825' };
+import { el, esc, chip, sourceChips, typeClass, citesClass, perSourcePanel, table } from './ui.js';
 
 const CONTEST_HEADLINE = {
   status_conflict: 'Sources disagree about whether this name is accepted at all.',
@@ -19,8 +13,7 @@ let root, resultsEl, detailEl, inputEl;
 let active = -1;      // highlighted suggestion, -1 = none
 let current = [];     // suggestions currently on screen
 
-const KIND_LABEL = ['accepted', 'synonym', 'contested'];
-const KIND_COLOUR = ['var(--accepted)', 'var(--synonym)', 'var(--contested)'];
+const KIND_CLASS = ['st-accepted', 'st-synonym', 'st-contested'];
 const TIER_NOTE = ['', '', '', 'matched on the epithet', 'matched inside the name', 'closest spelling'];
 
 export function render(container, initialQuery = '') {
@@ -128,7 +121,7 @@ function showMatches(query, openTop = false) {
                  : 'accepted';
     return `<li role="option" aria-selected="false"><button data-i="${i}">
       <span class="sci">${markUp(s)}</span>
-      <span class="kind" style="color:${KIND_COLOUR[s.kind]}">${detail}</span>
+      <span class="kind ${KIND_CLASS[s.kind]}">${detail}</span>
       ${TIER_NOTE[s.tier] ? `<span class="why">${TIER_NOTE[s.tier]}</span>` : ''}
     </button></li>`;
   }).join('');
@@ -198,7 +191,7 @@ function renderContested(res) {
     <h3>Per-source detail</h3>
     ${table(['Source', 'Says', 'Accepted parent', 'Authority', 'Type', 'Evidence'],
       (res.contestedRows || []).map(r => [
-        chip(r.source, sourceColour(r.source)),
+        chip(r.source, `src-${r.source}`),
         esc(r.source_says_relation || ''),
         `<span class="sci">${esc(r.source_says_accepted_parent || '')}</span>`,
         esc(r.authority || ''), esc(r.synonym_type || ''),
@@ -212,30 +205,30 @@ function renderContested(res) {
 function renderCard(res, rec, redirectedFrom) {
   const name = res.acceptedName;
   const badges = [];
-  if (rec.cites_appendix) badges.push(chip(`CITES ${rec.cites_appendix}`,
-    CITES_COLOURS[rec.cites_appendix] || '#8b98a9'));
-  if (rec.description_year) badges.push(chip(`described ${rec.description_year}`, '#8b98a9'));
+  if (rec.cites_appendix) badges.push(
+    chip(`CITES ${rec.cites_appendix}`, citesClass(rec.cites_appendix)));
+  if (rec.description_year) badges.push(chip(`described ${rec.description_year}`));
   const srcCount = (rec.sources || '').split(',').filter(s => s.trim()).length;
-  badges.push(chip(`${srcCount} source${srcCount === 1 ? '' : 's'}`, '#8b98a9'));
+  badges.push(chip(`${srcCount} source${srcCount === 1 ? '' : 's'}`));
 
   const syns = data.parseSynonymsDetailed(rec.synonyms_detailed || '');
-  badges.push(chip(`${syns.length} synonym${syns.length === 1 ? '' : 's'}`, '#8b98a9'));
+  badges.push(chip(`${syns.length} synonym${syns.length === 1 ? '' : 's'}`));
   const disputed = (rec.contested_synonyms || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (disputed.length) badges.push(chip(`${disputed.length} disputed`, 'var(--contested)'));
+  if (disputed.length) badges.push(chip(`${disputed.length} disputed`, 'danger'));
 
   const kv = (label, value) => value ? `<div class="kv"><b>${label}:</b> ${esc(value)}</div>` : '';
 
   detailEl.innerHTML = `
     ${redirectedFrom ? `<div class="banner info">↻ Redirected from synonym
       <span class="sci">${esc(redirectedFrom)}</span>
-      ${chip(res.synonymType || 'Unknown', TYPE_COLOURS[res.synonymType] || '#8b98a9')}
+      ${chip(res.synonymType || 'Unknown', typeClass(res.synonymType))}
       ${sourceChips(Object.entries(res.perSource)
         .filter(([, v]) => v.status === 'synonym').map(([s]) => s).join(','))}</div>` : ''}
     <h2 class="sci">${esc(name)}</h2>
     ${rec.accepted_name_full && rec.accepted_name_full !== name
       ? `<div class="caption">${esc(rec.accepted_name_full)}</div>` : ''}
     <div>${badges.join('')}</div>
-    <div style="margin:12px 0"><b class="muted">Sources:</b> ${sourceChips(rec.sources)}</div>
+    <div class="my-sm"><b class="muted">Sources:</b> ${sourceChips(rec.sources)}</div>
 
     ${syns.length ? `<h3>Synonyms</h3>
       ${syns.some(s => s.type === 'Mixed') ? `<p class="muted"><code>Mixed</code> means
@@ -243,7 +236,7 @@ function renderCard(res, rec, redirectedFrom) {
         vs heterotypic — a typing disagreement, not a contested name.</p>` : ''}
       ${table(['Synonym', 'Type', 'Sources'], syns.map(s => [
         `<span class="sci">${esc(s.name)}</span>`,
-        chip(s.type || 'Unknown', TYPE_COLOURS[s.type] || '#8b98a9'),
+        chip(s.type || 'Unknown', typeClass(s.type)),
         sourceChips(s.sources)]))}` : ''}
 
     ${disputed.length ? `<h3>Disputed names filed here</h3>
@@ -255,12 +248,12 @@ function renderCard(res, rec, redirectedFrom) {
         `<button class="linkish" data-goto="${esc(d)}">→ <span class="sci">${esc(d)}</span></button>`
       ).join(' &nbsp; ')}</div>` : ''}
 
-    <div class="grid2" style="margin-top:26px">
-      <div><h3 style="margin-top:0">Taxonomy</h3>
+    <div class="grid2 mt-lg">
+      <div><h3 class="mt-0">Taxonomy</h3>
         ${kv('Family', rec.family)}${kv('Genus', rec.genus)}
         ${kv('Species epithet', rec.species)}${kv('Rank', rec.taxon_rank)}
         ${kv('Basionym ID', rec.basionym)}</div>
-      <div><h3 style="margin-top:0">Publication</h3>
+      <div><h3 class="mt-0">Publication</h3>
         ${kv('Authority', rec.accepted_authority)}${kv('Description year', rec.description_year)}
         ${kv('First published', rec.first_published)}${kv('Place', rec.place_of_publication)}</div>
     </div>

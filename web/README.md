@@ -37,13 +37,40 @@ alphabetical split puts a tenth of Orchidaceae in `B` alone.
 (~5 s); to work on the site locally:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-web.txt
 python3 scripts/10_export_web.py
-python3 -m http.server -d web 8610
+python3 scripts/serve_web.py
 ```
 
 Then open <http://localhost:8610>. Opening `index.html` from the filesystem will
 not work — browsers block `fetch` on `file://`.
+
+**Use `scripts/serve_web.py`, not `python3 -m http.server`.** It reads the header
+block out of `netlify.toml` and sends it, so the strict Content-Security-Policy
+applies locally. Plain `http.server` sends no CSP at all, which is how the first
+deploy went out with every colour stripped: the CSP has no `'unsafe-inline'`,
+and the UI was colouring chips through `style` attributes. The same gap hid a
+second bug — the parity page's inline `<script>` never ran in production. Both
+are fixed, and both were invisible until the local server started sending the
+real headers.
+
+### Working within the CSP
+
+`default-src 'self'` with no `'unsafe-inline'` for either scripts or styles.
+Practically:
+
+- **No `style="…"` in generated HTML.** Colour through classes. Fixed
+  vocabularies (synonym types, CITES appendices, per-source status, diff
+  categories) live in `css/style.css`; per-source colours are generated into
+  `data/sources.css` from `scripts/_sources.py`, so adding a source still means
+  editing one registry entry.
+- **No inline `<script>`.** Modules only, loaded with `src`.
+- Assigning `element.style.width` from JS is fine — CSSOM is not covered by CSP.
+  Only attributes and `<style>`/`<script>` elements are.
+
+This is worth keeping strict rather than adding `'unsafe-inline'`: the reason
+this build exists is that an uploaded checklist cannot leave the browser, and a
+policy that permits inline injection is a weaker guarantee of that.
 
 ## The search box
 

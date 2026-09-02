@@ -17,11 +17,11 @@ function about(container) {
       every lookup, diff and export runs in this browser tab — nothing you type or
       upload is transmitted anywhere.</p>
     <div class="stats">
-      <div class="stat" style="border-color:var(--line)">
+      <div class="stat plain">
         <div class="n">${idx.counts.species.toLocaleString()}</div><div class="l">Accepted species</div></div>
-      <div class="stat" style="border-color:var(--line)">
+      <div class="stat plain">
         <div class="n">${idx.counts.synonymPairs.toLocaleString()}</div><div class="l">Synonym pairs</div></div>
-      <div class="stat" style="border-color:var(--line)">
+      <div class="stat plain">
         <div class="n">${idx.counts.contested.toLocaleString()}</div><div class="l">Contested binomials</div></div>
     </div>
     <h3>Sources</h3>

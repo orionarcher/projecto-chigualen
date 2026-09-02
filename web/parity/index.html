@@ -5,9 +5,10 @@
 <title>Parity check — JS resolver vs Python</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🌸</text></svg>">
 <link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../data/sources.css">
 </head>
 <body>
-<main style="padding:34px 40px;max-width:1000px">
+<main class="page">
   <h1>Parity check</h1>
   <p class="caption">Runs every case in <code>expected.json</code> — frozen from
     <code>app/data.py</code> by <code>tests/make_parity_fixture.py</code> — through
@@ -15,58 +16,6 @@
     This is the guard against the two resolvers drifting apart.</p>
   <div id="out" class="loading">Running…</div>
 </main>
-<script type="module">
-import * as data from '../js/data.js';
-
-const out = document.getElementById('out');
-const FIELDS = ['binomial', 'verdict', 'acceptedName', 'synonymType',
-                'descriptionYear', 'citesAppendix', 'contestClass'];
-
-(async () => {
-  await data.load();
-  const fixture = await (await fetch('expected.json')).json();
-
-  const mismatches = [];
-  const t0 = performance.now();
-  for (const want of fixture.cases) {
-    // resolve() is the synchronous path the batch export uses. Contested cases
-    // additionally need a shard for per-source detail, so use the full path.
-    const got = want.verdict === 'contested'
-      ? await data.resolveFull(want.query)
-      : data.resolve(want.query);
-
-    for (const f of FIELDS) {
-      if ((got[f] || '') !== (want[f] || '')) {
-        mismatches.push({ query: want.query, field: f, want: want[f], got: got[f] });
-      }
-    }
-    for (const s of fixture.sources) {
-      const [wStatus, wName] = want.perSource[s];
-      const g = got.perSource[s];
-      if (g.status !== wStatus || (g.acceptedName || '') !== (wName || '')) {
-        mismatches.push({ query: want.query, field: `perSource.${s}`,
-                          want: `${wStatus} ${wName}`, got: `${g.status} ${g.acceptedName}` });
-      }
-    }
-  }
-  const ms = Math.round(performance.now() - t0);
-  const n = fixture.cases.length;
-
-  out.className = '';
-  out.innerHTML = mismatches.length === 0
-    ? `<div class="banner info"><h4>✓ ${n.toLocaleString()} cases, no mismatches</h4>
-        <p>The browser resolver agrees with <code>app/data.py</code> on every field
-        of every case, in ${ms} ms.</p></div>`
-    : `<div class="banner error"><h4>✗ ${mismatches.length} mismatches across
-        ${n.toLocaleString()} cases</h4></div>
-       <table><thead><tr><th>Query</th><th>Field</th><th>Python</th><th>Browser</th></tr></thead>
-       <tbody>${mismatches.slice(0, 100).map(m => `<tr>
-         <td class="sci">${m.query}</td><td><code>${m.field}</code></td>
-         <td>${m.want ?? ''}</td><td>${m.got ?? ''}</td></tr>`).join('')}</tbody></table>
-       ${mismatches.length > 100 ? `<p class="muted">…and ${mismatches.length - 100} more.</p>` : ''}`;
-  document.title = mismatches.length ? `✗ ${mismatches.length} mismatches` : `✓ parity`;
-})().catch(e => { out.className = ''; out.innerHTML =
-  `<div class="banner error"><h4>Harness error</h4><p>${e.message}</p></div>`; });
-</script>
+<script type="module" src="parity.js"></script>
 </body>
 </html>
