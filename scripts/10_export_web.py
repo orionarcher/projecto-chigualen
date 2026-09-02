@@ -141,7 +141,7 @@ def main() -> int:
             continue
         key = name.lower()
         if entries.get(key, [None])[0] == KIND_ACCEPTED:
-            continue  # accepted wins, exactly as in app/data.py
+            continue  # accepted wins, exactly as in archive/app/data.py
         entries[key] = [KIND_SYNONYM, intern_name(parent), source_mask(srcs),
                         syn_type_vocab(syn_type or "Unknown")]
 

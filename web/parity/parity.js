@@ -40,7 +40,7 @@ const FIELDS = ['binomial', 'verdict', 'acceptedName', 'synonymType',
   out.className = '';
   out.innerHTML = mismatches.length === 0
     ? `<div class="banner info"><h4>✓ ${n.toLocaleString()} cases, no mismatches</h4>
-        <p>The browser resolver agrees with <code>app/data.py</code> on every field
+        <p>The browser resolver agrees with <code>archive/app/data.py</code> on every field
         of every case, in ${ms} ms.</p></div>`
     : `<div class="banner error"><h4>✗ ${mismatches.length} mismatches across
         ${n.toLocaleString()} cases</h4></div>

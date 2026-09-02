@@ -1,5 +1,5 @@
 /** Batch diff: upload an authority CSV, resolve every row, export per-source
- *  columns. Browser port of app/ingest.py.
+ *  columns. Browser port of archive/app/ingest.py.
  *
  *  The whole point of the static build: the uploaded checklist is parsed and
  *  resolved in the page. It is never sent anywhere. */
@@ -93,7 +93,7 @@ export function render(container) {
   });
 }
 
-/** Mirrors build_report() in app/ingest.py.
+/** Mirrors build_report() in archive/app/ingest.py.
  *
  *  Async because a contested name's per-source verdict lives in a shard, not in
  *  the index. Resolving those synchronously would silently export

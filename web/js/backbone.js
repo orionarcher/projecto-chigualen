@@ -1,5 +1,5 @@
 /** Custom taxonomic backbones — bring your own checklist.
- *  Browser port of app/backbone.py.
+ *  Browser port of archive/app/backbone.py.
  *
  *  CITES Management and Scientific Authorities keep their own name lists (the
  *  German authority's WISIA database, for instance). A loaded checklist is

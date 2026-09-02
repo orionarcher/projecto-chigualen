@@ -18,7 +18,9 @@ import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+# The reference implementation lives in archive/app; see archive/README.md for
+# why an archived app is still the thing the browser resolver is checked against.
+sys.path.insert(0, str(ROOT / "archive"))
 
 # The resolver only needs streamlit for its cache decorators.
 st = types.ModuleType("streamlit")

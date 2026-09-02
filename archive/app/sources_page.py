@@ -11,7 +11,7 @@ from app.backbone import registered
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from _sources import (  # noqa: E402
     CONTEST_CLASSES,
     REGISTRY,

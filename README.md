@@ -38,8 +38,10 @@ five sources cannot be downloaded from anywhere, so they are committed as
 `Chigualen/data/raw/_originals/Chigualen.rar` (5.6 MB) — the repository is
 self-contained and every output here can be regenerated from a fresh clone.
 
-**App** — a Streamlit app (`app/`) that reads the consolidated outputs and
-offers:
+**App** — the interface is the static site in [`web/`](web/README.md); the
+original Streamlit version is kept in [`archive/`](archive/README.md), where it
+still runs and still serves as the reference implementation the browser resolver
+is checked against. Both offer:
 
 1. **Search** by accepted name or synonym, with a species card showing sources,
    synonyms (typed), disputed names filed under the species, CITES appendix,
@@ -91,13 +93,26 @@ accepted, is the same plant. 3,985 species carry at least one such link.
 
 ## Running locally
 
+The static site — what is deployed:
+
 ```bash
-pip install -r requirements.txt
-streamlit run app/app.py
+pip install -r requirements-web.txt
+python3 scripts/10_export_web.py
+python3 scripts/serve_web.py
 ```
 
-Open http://localhost:8501. `requirements.txt` is the **app runtime only** —
-`streamlit` and `pandas`. Running the pipeline needs a PDF engine as well:
+Open http://localhost:8610. Use `scripts/serve_web.py` rather than
+`python3 -m http.server`: it sends the same headers Netlify does, including the
+Content-Security-Policy, so problems show up here instead of in production.
+
+The archived Streamlit app, against the same data:
+
+```bash
+pip install -r requirements.txt
+streamlit run archive/app/app.py
+```
+
+Running the pipeline needs a PDF engine on top:
 
 ```bash
 pip install -r requirements-pipeline.txt
@@ -151,11 +166,11 @@ read the registry. A historical edition enters as its own source rather than
 replacing the current one, so an edition-to-edition disagreement surfaces as an
 ordinary `status_conflict`.
 
-## Static build (experimental)
+## The static site
 
-[`web/`](web/README.md) is the same database as a static site — no server, every
-lookup in the browser. Deployed from `netlify.toml`, which regenerates the data
-at build time in about five seconds.
+[`web/`](web/README.md) is the interface: no server, every lookup in the browser.
+Deployed from `netlify.toml`, which regenerates the data at build time in about
+five seconds.
 
 It exists mainly for one property: an authority's uploaded checklist is parsed
 and resolved in the page and never reaches a server. Search and the full batch
@@ -169,7 +184,7 @@ the single definition of each `contest_class`, previously copied into three
 files.
 
 Its risk is that `web/js/data.js` re-implements the resolver that
-[`app/data.py`](app/data.py) owns. `web/parity/` holds that in check — 1,213
+[`archive/app/data.py`](archive/app/data.py) owns. `web/parity/` holds that in check — 1,213
 frozen Python verdicts replayed through the browser, compared field by field.
 Run it after touching either resolver.
 

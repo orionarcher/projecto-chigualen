@@ -1,7 +1,7 @@
 """Chigualen orchid consolidation — local Streamlit app.
 
 Run from project root:
-    streamlit run app/app.py
+    streamlit run archive/app/app.py
 """
 
 from __future__ import annotations
@@ -11,7 +11,8 @@ from pathlib import Path
 
 import streamlit as st
 
-# Make `app` importable when Streamlit runs this file directly.
+# Make `app` importable when Streamlit runs this file directly. That is
+# archive/, the package's own parent — not the repo root.
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))

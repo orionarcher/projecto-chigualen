@@ -1,5 +1,5 @@
 /** Data sources page: what each source is, and how conflicts are decided.
- *  Browser port of app/sources_page.py.
+ *  Browser port of archive/app/sources_page.py.
  *
  *  Everything factual comes from data/sources.json, exported from
  *  scripts/_sources.py — the same registry the Streamlit page renders and the

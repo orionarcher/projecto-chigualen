@@ -1,9 +1,9 @@
 /**
- * Browser port of app/data.py.
+ * Browser port of archive/app/data.py.
  *
  * This file is the risk in the static build: it is a SECOND implementation of
  * the logic that decides what a name means. The Streamlit app has exactly one
- * (`resolve()` in app/data.py), which is what guarantees a species card and a
+ * (`resolve()` in archive/app/data.py), which is what guarantees a species card and a
  * batch export can never disagree. Here that guarantee has to be maintained by
  * hand, so every function below names the Python function it mirrors, and
  * web/js/parity.js re-runs the Python test fixtures against it.
@@ -119,7 +119,7 @@ export function normText(value) {
   return s.replace(/\s+/g, ' ').trim();
 }
 
-/** Mirrors normalize_query() in app/data.py. */
+/** Mirrors normalize_query() in archive/app/data.py. */
 export function normalizeQuery(q) {
   const s = normText(q);
   if (!s) return '';
@@ -323,7 +323,7 @@ export const prefixMatches = (query, limit = 15) => suggest(query, limit).map(s 
 // --------------------------------------------------------------- resolve
 
 /**
- * Mirrors resolve() in app/data.py, verdict for verdict.
+ * Mirrors resolve() in archive/app/data.py, verdict for verdict.
  * Returns { query, binomial, verdict, acceptedName, synonymType, descriptionYear,
  *           citesAppendix, contestClass, note, perSource: {src: {status, acceptedName, detail}} }
  */
@@ -419,7 +419,7 @@ export async function resolveFull(query) {
   return res;
 }
 
-/** Mirrors parse_synonyms_detailed() in app/data.py. */
+/** Mirrors parse_synonyms_detailed() in archive/app/data.py. */
 export function parseSynonymsDetailed(detail) {
   if (!detail) return [];
   const parts = detail.split('], ');

@@ -124,7 +124,7 @@ name, then alphabetical* — so a name that is current outranks one that is not.
 ## The parity check
 
 `web/js/data.js` is a **second implementation** of the logic that decides what a
-name means. The Streamlit app has exactly one (`resolve()` in `app/data.py`),
+name means. The Streamlit app has exactly one (`resolve()` in `archive/app/data.py`),
 which is what guarantees a species card and a batch export can never disagree —
 the failure the CITES authority reported. Two implementations put that guarantee
 at risk.
@@ -178,7 +178,7 @@ from `scripts/_sources.py`.
 
 That registry is now the single definition for all four consumers:
 `06_consolidate.py` which assigns a contest class, `09_repair_outputs.py` which
-backfills it, `app/sources_page.py` which explains it, and this build's export.
+backfills it, `archive/app/sources_page.py` which explains it, and this build's export.
 They had drifted into three separate copies. Only the narrative around the facts
 is written twice.
 
