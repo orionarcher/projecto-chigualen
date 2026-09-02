@@ -22,11 +22,15 @@ export function chip(label, cls = 'neutral') {
   return `<span class="chip ${cls}">${esc(label)}</span>`;
 }
 
-/** Source ids as coloured chips. Accepts the pipe-joined form used in the long
- *  table and the comma-joined form used in the wide one. */
-export const sourceChips = (value) =>
+/** Source ids as coloured chips, labelled with the source's name rather than its
+ *  internal id. Accepts the pipe-joined form used in the long table and the
+ *  comma-joined form used in the wide one.
+ *
+ *  `names` maps id → short name; callers pass index().sourceShort. Without it the
+ *  id is shown, which is the right fallback for a checklist the reader named. */
+export const sourceChips = (value, names = {}) =>
   (value || '').replace(/\|/g, ',').split(',').map(s => s.trim()).filter(Boolean)
-    .map(s => chip(s, `src-${s}`)).join('');
+    .map(s => chip(names[s] || s, `src-${s}`)).join('');
 
 /** Class for a synonym type as it appears in synonyms_detailed. */
 export const typeClass = (t) => ({

@@ -13,17 +13,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from _sources import (  # noqa: E402
-    CITES_DISTINCTION,
     CONTEST_CLASSES,
-    NOT_COMPARED,
     REGISTRY,
+    TYPING_NEVER_CONTESTS,
 )
 
 KIND_LABEL = {
     "backbone": "Taxonomic backbone",
-    "regulatory": "Regulatory",
+    "regulatory": "Regulatory source",
     "curated": "Curated by the project team",
-    "custom": "Your own checklist",
 }
 
 
@@ -31,11 +29,10 @@ def render_source_card(source_id: str) -> None:
     s = REGISTRY[source_id]
     with st.container(border=True):
         st.markdown(
-            f"<h3 style='margin:0 0 2px 0;'>{s.label} "
-            f"<code style='font-size:0.6em; vertical-align:middle;'>{s.id}</code></h3>"
-            f"<div style='color:{s.colour}; font-weight:600; font-size:0.85em;"
-            f" text-transform:uppercase; letter-spacing:0.04em;'>"
-            f"{KIND_LABEL.get(s.kind, s.kind)}</div>",
+            f"<div style='color:{s.colour}; font-weight:700; font-size:0.75em;"
+            f" text-transform:uppercase; letter-spacing:0.08em;'>"
+            f"{KIND_LABEL.get(s.kind, s.kind)}</div>"
+            f"<h3 style='margin:2px 0 6px 0;'>{s.label}</h3>",
             unsafe_allow_html=True,
         )
         st.markdown(f"*{s.one_liner}*")
@@ -63,8 +60,7 @@ def render_source_card(source_id: str) -> None:
 
         meta = [
             f"**Edition used:** {s.edition}",
-            f"**Licence / terms:** {s.licence}",
-            f"**Row types:** {', '.join(f'`{r}`' for r in s.relations)}",
+            f"**Terms of use:** {s.licence}",
         ]
         if s.cleaner:
             meta.append(f"**Cleaner:** `{s.cleaner}`")
@@ -82,29 +78,6 @@ def render() -> None:
         "Five sources go into the consolidated database. They are not "
         "interchangeable — two describe taxonomy, two describe regulation, and "
         "one supplies synonym typing the others cannot."
-    )
-
-    st.subheader("The two CITES sources are different things")
-    st.markdown(
-        "This is the distinction that trips people up most often, so it is worth "
-        "stating plainly. **`cites_csv` and `cites_pdf` are not two formats of one "
-        "dataset.** They answer different questions and neither substitutes for "
-        "the other."
-    )
-    st.markdown(
-        "| | `cites_csv` — the listings | `cites_pdf` — the checklist |\n"
-        "|---|---|---|\n"
-        + "".join(f"| **{q}** | {a} | {b} |\n" for q, a, b in CITES_DISTINCTION)
-    )
-    st.markdown(
-        """
-The practical consequence: a name can be **accepted in `cites_csv` and a synonym
-everywhere else**, because the listings table records the name under which a
-taxon is regulated, not the name a botanist would use today. That is the single
-most common cause of a `status_conflict`, and it is a real regulatory fact
-rather than a data error — which is why such names are surfaced rather than
-silently resolved.
-        """
     )
 
     st.divider()
@@ -128,30 +101,25 @@ silently resolved.
         )
 
     st.divider()
-    st.subheader("How `contest_class` is decided")
+    st.subheader("How contested names are classified")
     st.markdown(
-        "When sources cannot be reconciled on a name, the name is held out of "
-        "the consolidated table and written to `contested_names.csv` instead — "
-        "one row per source, so you can see who said what. `contest_class` "
-        "records **which comparison failed**."
+        "When the sources cannot be reconciled on a name, it is kept out of the "
+        "main table and recorded separately, one row per source, so you can see "
+        "who said what. The **Contest Class** records which comparison failed."
     )
 
     for cls in CONTEST_CLASSES:
         with st.container(border=True):
             st.markdown(
                 f"<span style='display:inline-block; padding:2px 10px; border-radius:12px;"
-                f" background:{cls.colour}22; color:{cls.colour}; font-weight:600;"
-                f" border:1px solid {cls.colour}55; font-family:monospace;'>{cls.id}</span>"
-                f" &nbsp; <b>{cls.headline}</b>",
+                f" background:{cls.colour}22; color:{cls.colour}; font-weight:650;"
+                f" border:1px solid {cls.colour}55;'>{cls.title}</span>"
+                f" &nbsp; {cls.summary}",
                 unsafe_allow_html=True,
             )
-            st.markdown(cls.definition)
-            st.markdown(f"**Fields compared:** {cls.compared}")
+            st.caption(cls.detail)
             st.caption(f"Example — {cls.example}")
-
-    st.markdown("#### What is deliberately *not* compared")
-    for title, body in NOT_COMPARED:
-        st.markdown(f"**{title}.** {body}")
+    st.info(TYPING_NEVER_CONTESTS, icon="ℹ")
 
     st.divider()
     st.subheader("Coming: CITES Standard Nomenclatures")

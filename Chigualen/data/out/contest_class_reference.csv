@@ -1,4 +1,4 @@
 contest_class,rule
-status_conflict,At least one source records this binomial as an accepted name while at least one other records it as a synonym of a different name. Compared field: `relation` — `accepted` vs `synonym_of` — across sources.
-parent_conflict,"Every source that mentions the binomial calls it a synonym, but they name different accepted parents for it. Compared field: `accepted_name` on the synonym rows — the set of distinct parents claimed across sources has more than one member."
-parent_contested,"Every source agrees the binomial is a synonym, and they all name the same parent. But that parent is itself contested, so the placement cannot be resolved. Compared field: nothing on this name. The class is inherited from the parent."
+status_conflict,One source calls the name accepted; another calls it a synonym of something else. Decided by comparing whether each source files the name as accepted or as a synonym.
+parent_conflict,Every source agrees the name is a synonym — but not of the same species. Decided by comparing the accepted species each source files the synonym under.
+parent_contested,Nothing about this name is disputed; the species it belongs to is. Nothing on this name was compared — the doubt is carried over from its accepted species.

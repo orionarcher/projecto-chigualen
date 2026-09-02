@@ -1,25 +1,18 @@
 /** Data sources page: what each source is, and how conflicts are decided.
  *  Browser port of app/sources_page.py.
  *
- *  Everything factual here comes from data/sources.json, exported straight from
+ *  Everything factual comes from data/sources.json, exported from
  *  scripts/_sources.py — the same registry the Streamlit page renders and the
- *  consolidation classifies against. Only the narrative around it is written
- *  twice. */
+ *  consolidation classifies against. Internal ids (`cites_csv` and friends) are
+ *  export column prefixes; they are not names, and do not appear here as names. */
 
 import { el, esc, table, chip } from './dom.js';
 import * as backbone from './backbone.js';
 
 const KIND_LABEL = {
   backbone: 'Taxonomic backbone',
-  regulatory: 'Regulatory',
+  regulatory: 'Regulatory source',
   curated: 'Curated by the project team',
-  custom: 'Your own checklist',
-};
-
-const CLASS_CHIP = {
-  status_conflict: 'cat-contested',
-  parent_conflict: 'cat-contested',
-  parent_contested: 'ty-mixed',
 };
 
 let payload = null;
@@ -37,29 +30,31 @@ function md(text) {
 
 function sourceCard(s) {
   const meta = [
-    `<b>Edition used:</b> ${md(s.edition)}`,
-    `<b>Licence / terms:</b> ${esc(s.licence)}`,
-    `<b>Row types:</b> ${s.relations.map(r => `<code>${esc(r)}</code>`).join(', ')}`,
-    s.cleaner ? `<b>Cleaner:</b> <code>${esc(s.cleaner)}</code>` : '',
-    s.homepage ? `<a href="${esc(s.homepage)}" target="_blank" rel="noopener">Homepage</a>` : '',
-  ].filter(Boolean);
+    `<div><b>Edition used:</b> ${md(s.edition)}</div>`,
+    `<div><b>Terms of use:</b> ${esc(s.licence)}</div>`,
+    `<div><b>Covers:</b> ${s.speciesTouched.toLocaleString()} of the species in this database</div>`,
+    s.homepage
+      ? `<div><a href="${esc(s.homepage)}" target="_blank" rel="noopener">Source homepage</a></div>`
+      : '',
+  ].filter(Boolean).join('');
 
-  return `<div class="panel">
-    <h3 class="mt-0">${esc(s.label)} <code>${esc(s.id)}</code></h3>
-    <div class="src-kind ${esc('src-' + s.id)}">${esc(KIND_LABEL[s.kind] || s.kind)}</div>
-    <p><i>${md(s.oneLiner)}</i></p>
+  return `<div class="panel source-card">
+    <div class="eyebrow">${esc(KIND_LABEL[s.kind] || s.kind)}</div>
+    <h3>${esc(s.label)}</h3>
+    <p class="one-liner">${md(s.oneLiner)}</p>
     ${s.provenanceConfirmed ? '' : `<div class="banner warn">The exact provenance of
       this file is inferred from its columns rather than from a documented export —
       worth confirming with the project team before citing it.</div>`}
     <div class="grid2">
-      <div><b>Authoritative for</b>
+      <div><h4>Authoritative for</h4>
         <ul>${s.contributes.map(i => `<li>${md(i)}</li>`).join('')}</ul></div>
-      <div><b>Does <i>not</i> carry</b>
+      <div><h4>Does not carry</h4>
         <ul>${s.doesNotCarry.map(i => `<li>${md(i)}</li>`).join('')}</ul></div>
     </div>
-    <p><b>Where it comes from</b><br>${md(s.origin)}</p>
-    <p class="muted">${meta.join(' · ')}</p>
+    <h4 class="mt-sm">Where it comes from</h4>
+    <p>${md(s.origin)}</p>
     ${s.notes ? `<div class="banner info">${md(s.notes)}</div>` : ''}
+    <div class="meta">${meta}</div>
   </div>`;
 }
 
@@ -75,82 +70,68 @@ export async function render(container) {
   container.innerHTML = '';
   container.appendChild(el(`<div>
     <h1>Data sources</h1>
-    <p class="caption">Five sources go into the consolidated database. They are not
-      interchangeable — two describe taxonomy, two describe regulation, and one
-      supplies synonym typing the others cannot.</p>
+    <p class="lede">Five sources go into this database. They are not
+      interchangeable: two describe taxonomy, two describe regulation, and one
+      supplies the synonym typing the others cannot. Where they disagree, the name
+      is held back rather than resolved silently.</p>
 
-    <h3>The two CITES sources are different things</h3>
-    <p>This is the distinction that trips people up most often, so it is worth
-      stating plainly. <b><code>cites_csv</code> and <code>cites_pdf</code> are not
-      two formats of one dataset.</b> They answer different questions and neither
-      substitutes for the other.</p>
-    ${table(['', 'cites_csv — the listings', 'cites_pdf — the checklist'],
-      p.citesDistinction.map(r => [`<b>${esc(r.question)}</b>`, md(r.citesCsv), md(r.citesPdf)]))}
-    <p>The practical consequence: a name can be <b>accepted in <code>cites_csv</code>
-      and a synonym everywhere else</b>, because the listings table records the name
-      under which a taxon is regulated, not the name a botanist would use today.
-      That is the single most common cause of a <code>status_conflict</code>, and it
-      is a real regulatory fact rather than a data error — which is why such names
-      are surfaced rather than silently resolved.</p>
-
-    <h3>Every source in detail</h3>
+    <div class="section">Every source in detail</div>
     ${p.sources.map(sourceCard).join('')}
 
-    <h3>Your own checklists</h3>
+    <div class="section">Your own reference lists</div>
     ${custom.length
-      ? `<ul>${custom.map(bb => `<li><b>${esc(bb.label)}</b> <code>${esc(bb.id)}</code>
-          — ${backbone.nameCount(bb).toLocaleString()} names, compared alongside the
-          five built-in sources.</li>`).join('')}</ul>`
-      : `<div class="banner info">You can add your own backbone — an authority
-          database such as WISIA, or any checklist CSV — from the
-          <b>Your own checklists</b> page. It is then compared alongside these five
-          everywhere in the app.</div>`}
+      ? `<p class="section-intro">Loaded in this browser tab and compared alongside
+          the five above.</p>
+         <ul>${custom.map(bb => `<li><b>${esc(bb.label)}</b> —
+          ${backbone.nameCount(bb).toLocaleString()} names</li>`).join('')}</ul>`
+      : `<p class="section-intro">You can load a checklist of your own — an
+          authority database such as WISIA, or any list of names — and it is
+          compared alongside these five everywhere in the app. See
+          <b>Your reference lists</b>.</p>`}
 
-    <h3>How <code>contest_class</code> is decided</h3>
-    <p>When sources cannot be reconciled on a name, the name is held out of the
-      consolidated table and written to <code>contested_names.csv</code> instead —
-      one row per source, so you can see who said what. <code>contest_class</code>
-      records <b>which comparison failed</b>.</p>
-    ${p.contestClasses.map(c => `<div class="panel">
-      <div>${chip(c.id, CLASS_CHIP[c.id] || 'neutral')} &nbsp; <b>${esc(c.headline)}</b>
-        <span class="kind">${(p.contestClassCounts[c.id] || 0).toLocaleString()} binomials</span></div>
-      <p>${md(c.definition)}</p>
-      <p><b>Fields compared:</b> ${md(c.compared)}</p>
-      <p class="muted">Example — ${md(c.example)}</p>
-    </div>`).join('')}
+    <div class="section">How contested names are classified</div>
+    <p class="section-intro">When the sources cannot be reconciled on a name, it is
+      kept out of the main database and recorded separately, one row per source, so
+      you can see who said what. The <b>Contest Class</b> records which comparison
+      failed.</p>
+    <div class="panel">
+      ${p.contestClasses.map(c => `<div class="rule-row">
+        <div>
+          <div class="rule-name">${esc(c.title)}</div>
+          <div class="rule-count">${(p.contestClassCounts[c.id] || 0).toLocaleString()} names</div>
+        </div>
+        <div>
+          <div>${md(c.summary)}</div>
+          <p class="rule-how">${md(c.detail)}</p>
+          <p class="rule-eg muted">${md(c.example)}</p>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="banner info">${md(p.typingNeverContests)}</div>
 
-    <h3>What is deliberately <i>not</i> compared</h3>
-    ${p.notCompared.map(n => `<p><b>${esc(n.title)}.</b> ${md(n.body)}</p>`).join('')}
+    <div class="section">Coming: CITES Standard Nomenclatures</div>
+    <p class="section-intro">Machine-readable editions of the CITES Standard
+      Nomenclatures, current and historical, are the obvious next sources to add.
+      They are the reference the Parties actually adopted, and historical editions
+      would let a name be checked against the nomenclature in force when a permit
+      was issued. A historical edition would enter as a source in its own right
+      rather than replacing the current one, so a disagreement between editions
+      would surface like any other.</p>
 
-    <h3>Coming: CITES Standard Nomenclatures</h3>
-    <p>Machine-readable editions of the <b>CITES Standard Nomenclatures</b>, current
-      and historical, are the obvious next sources to add: they are the reference
-      the Parties actually adopted, and historical editions would let a name be
-      checked against the nomenclature in force when a permit was issued.</p>
-    <p>The pipeline is already shaped for this. Adding a source means writing a
-      cleaner that emits <code>Chigualen/data/clean/&lt;id&gt;.csv</code> in the
-      frozen schema, appending one <code>Source(...)</code> entry to
-      <code>scripts/_sources.py</code>, and adding its id to
-      <code>PIPELINE_ORDER</code>. Nothing else changes: consolidation, the conflict
-      classes, the species cards, this page and the export all read the registry.
-      A historical edition would enter as its own source rather than replacing the
-      current one, so an edition-to-edition disagreement surfaces as an ordinary
-      <code>status_conflict</code>.</p>
-
-    <h3>What is in this build</h3>
+    <div class="section">What is in this build</div>
     <div class="stats">
       <div class="stat plain"><div class="n">${p.counts.species.toLocaleString()}</div>
         <div class="l">Accepted species</div></div>
       <div class="stat plain"><div class="n">${p.counts.synonymPairs.toLocaleString()}</div>
         <div class="l">Synonym pairs</div></div>
       <div class="stat plain"><div class="n">${p.counts.contested.toLocaleString()}</div>
-        <div class="l">Contested binomials</div></div>
+        <div class="l">Contested names</div></div>
       <div class="stat plain"><div class="n">${p.counts.withYear.toLocaleString()}</div>
         <div class="l">With a description year</div></div>
     </div>
-    ${table(['Source', 'Kind', 'Species touched', 'Licence'],
+    ${table(['Source', 'Kind', 'Species covered', 'Terms of use'],
       p.sources.map(s => [
-        `${chip(s.id, 'src-' + s.id)} ${esc(s.label)}`,
+        `${chip(s.short, 'src-' + s.id)} ${esc(s.label)}`,
         esc(KIND_LABEL[s.kind] || s.kind),
         s.speciesTouched.toLocaleString(),
         esc(s.licence)]))}

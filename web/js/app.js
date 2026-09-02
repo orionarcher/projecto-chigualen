@@ -14,34 +14,45 @@ function about(container) {
   const idx = data.index();
   container.innerHTML = `
     <h1>About Chigualen</h1>
-    <p>A consolidated orchid-species database built from five sources, served as a
-      static site. <b>There is no backend.</b> The name index is downloaded once and
-      every lookup, diff and export runs in this browser tab — nothing you type or
-      upload is transmitted anywhere.</p>
+    <p class="lede">One place to find out what an orchid name means: whether it is
+      current, what it is a synonym of, whether CITES regulates it, and — where the
+      authorities disagree — exactly who says what.</p>
+
     <div class="stats">
-      <div class="stat plain">
-        <div class="n">${idx.counts.species.toLocaleString()}</div><div class="l">Accepted species</div></div>
-      <div class="stat plain">
-        <div class="n">${idx.counts.synonymPairs.toLocaleString()}</div><div class="l">Synonym pairs</div></div>
-      <div class="stat plain">
-        <div class="n">${idx.counts.contested.toLocaleString()}</div><div class="l">Contested binomials</div></div>
+      <div class="stat plain"><div class="n">${idx.counts.species.toLocaleString()}</div>
+        <div class="l">Accepted species</div></div>
+      <div class="stat plain"><div class="n">${idx.counts.synonymPairs.toLocaleString()}</div>
+        <div class="l">Synonym pairs</div></div>
+      <div class="stat plain"><div class="n">${idx.counts.contested.toLocaleString()}</div>
+        <div class="l">Contested names</div></div>
     </div>
-    <h3>The pages</h3>
+
+    <div class="section">What you can do here</div>
     <ul>
-      <li><b>Search</b> — find a species by its accepted name or any known synonym.
-        Suggestions appear as you type, including on the epithet alone and through
-        typos. Every result shows what each source says on its own.</li>
-      <li><b>Ingest authority CSV</b> — diff an external list against the database.
-        The export carries a status and accepted name <i>per source</i>, plus the
-        reason behind any contested verdict and the description year.</li>
-      <li><b>Your own checklists</b> — load an authority's internal backbone and it
-        is compared alongside the five built-in sources everywhere in the app.</li>
-      <li><b>Data sources</b> — what each source is, where it comes from, and the
-        exact rules behind <code>contest_class</code>.</li>
+      <li><b>Look up a name.</b> Search by the current name or any synonym.
+        Suggestions appear as you type — including on the species epithet alone,
+        which matters when the genus has changed since the name was written, and
+        through spelling mistakes.</li>
+      <li><b>Check a list of names.</b> Upload a spreadsheet of names and get back
+        one row per name saying how each resolves, what every source says about it
+        individually, and the reason behind any disagreement.</li>
+      <li><b>Compare against your own list.</b> Load your authority's own checklist
+        and it is compared alongside the five reference sources everywhere, with
+        disagreements called out.</li>
     </ul>
-    <p class="muted">This is a static build of the Streamlit app in
-      <code>app/</code>. The pipeline that produces the data is unchanged and still
-      runs offline.</p>`;
+
+    <div class="section">Where the answers come from</div>
+    <p>Five sources: two global taxonomic checklists, the CITES listings, the CITES
+      Appendix II Orchid Checklist, and a curated synonym list. Where they agree,
+      the name is settled. Where they do not, it is held back and shown to you with
+      the disagreement spelled out rather than resolved silently behind your back.
+      See <b>Data sources</b> for what each one is authoritative for.</p>
+
+    <div class="section">Your data</div>
+    <p>Nothing you type or upload is transmitted anywhere. The database is
+      downloaded to your browser once, and every search, comparison and export
+      after that happens on your own machine — which is why a checklist you load
+      here never leaves it.</p>`;
 }
 
 const PAGES = {

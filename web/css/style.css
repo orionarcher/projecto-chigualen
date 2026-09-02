@@ -31,9 +31,18 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 
 /* main */
 main { flex: 1; padding: 34px 40px 80px; max-width: 1080px; }
-h1 { font-size: 1.9rem; margin: 0 0 6px; }
-h2 { font-size: 1.5rem; margin: 0 0 4px; }
+/* A real scale. Section headings were the same size as body text, which left
+   a long reference page reading as one undifferentiated block. */
+h1 { font-size: 2.1rem; margin: 0 0 8px; letter-spacing: -0.02em; line-height: 1.15; }
+h2 { font-size: 1.55rem; margin: 0 0 4px; letter-spacing: -0.015em; line-height: 1.2; }
 h3 { font-size: 1.02rem; margin: 26px 0 10px; letter-spacing: 0.01em; }
+
+/* Top-level sections of a long page. */
+.section { font-size: 1.5rem; font-weight: 650; letter-spacing: -0.015em;
+           margin: 52px 0 6px; padding-top: 22px; border-top: 1px solid var(--line); }
+.section:first-of-type { margin-top: 36px; }
+.section-intro { color: var(--dim); margin: 0 0 20px; max-width: 62ch; }
+.lede { font-size: 1.06rem; color: var(--dim); max-width: 64ch; margin: 0 0 26px; }
 .caption { color: var(--dim); font-size: 0.9rem; margin-bottom: 22px; }
 .sci { font-style: italic; }
 
@@ -160,3 +169,25 @@ tr:last-child td { border-bottom: 0; }
 .panel > h3:first-child + .src-kind { margin-top: -4px; }
 .panel ul { margin: 6px 0 0; padding-left: 20px; }
 .panel li { margin: 3px 0; }
+
+/* Source cards: name large, kind as a quiet eyebrow above it. */
+.source-card { padding: 20px 22px; }
+.source-card .eyebrow { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: 0.09em; color: var(--dim); margin-bottom: 6px; }
+.source-card h3 { font-size: 1.3rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+.source-card .one-liner { font-size: 1rem; margin: 0 0 18px; max-width: 66ch; }
+.source-card h4 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.07em;
+                  color: var(--dim); margin: 0 0 6px; font-weight: 700; }
+.source-card .meta { font-size: 0.83rem; color: var(--dim); margin-top: 16px;
+                     padding-top: 12px; border-top: 1px solid var(--line); }
+.source-card .meta div { margin: 2px 0; }
+
+/* Contest classes as a compact reference rather than three essays. */
+.rule-row { display: grid; grid-template-columns: 190px 1fr; gap: 20px;
+            padding: 16px 0; border-top: 1px solid var(--line); }
+.rule-row:first-of-type { border-top: 0; }
+.rule-row .rule-name { font-weight: 650; }
+.rule-row .rule-count { color: var(--dim); font-size: 0.83rem; font-weight: 400; }
+.rule-row .rule-how { color: var(--dim); font-size: 0.88rem; margin: 6px 0 0; }
+.rule-row .rule-eg { font-size: 0.88rem; margin: 8px 0 0; }
+@media (max-width: 700px) { .rule-row { grid-template-columns: 1fr; gap: 6px; } }

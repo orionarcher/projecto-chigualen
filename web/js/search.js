@@ -2,7 +2,7 @@
  *  Browser port of app/search.py. */
 import * as data from './data.js';
 import { el, esc, chip, sourceChips, typeClass, citesClass, table } from './dom.js';
-import { perSourcePanel } from './ui.js';
+import { perSourcePanel, shortNames } from './ui.js';
 
 const CONTEST_HEADLINE = {
   status_conflict: 'Sources disagree about whether this name is accepted at all.',
@@ -192,7 +192,7 @@ function renderContested(res) {
     <h3>Per-source detail</h3>
     ${table(['Source', 'Says', 'Accepted parent', 'Authority', 'Type', 'Evidence'],
       (res.contestedRows || []).map(r => [
-        chip(r.source, `src-${r.source}`),
+        chip(shortNames()[r.source] || r.source, `src-${r.source}`),
         esc(r.source_says_relation || ''),
         `<span class="sci">${esc(r.source_says_accepted_parent || '')}</span>`,
         esc(r.authority || ''), esc(r.synonym_type || ''),
@@ -224,12 +224,12 @@ function renderCard(res, rec, redirectedFrom) {
       <span class="sci">${esc(redirectedFrom)}</span>
       ${chip(res.synonymType || 'Unknown', typeClass(res.synonymType))}
       ${sourceChips(Object.entries(res.perSource)
-        .filter(([, v]) => v.status === 'synonym').map(([s]) => s).join(','))}</div>` : ''}
+        .filter(([, v]) => v.status === 'synonym').map(([s]) => s).join(','), shortNames())}</div>` : ''}
     <h2 class="sci">${esc(name)}</h2>
     ${rec.accepted_name_full && rec.accepted_name_full !== name
       ? `<div class="caption">${esc(rec.accepted_name_full)}</div>` : ''}
     <div>${badges.join('')}</div>
-    <div class="my-sm"><b class="muted">Sources:</b> ${sourceChips(rec.sources)}</div>
+    <div class="my-sm"><b class="muted">Sources:</b> ${sourceChips(rec.sources, shortNames())}</div>
 
     ${syns.length ? `<h3>Synonyms</h3>
       ${syns.some(s => s.type === 'Mixed') ? `<p class="muted"><code>Mixed</code> means
@@ -238,7 +238,7 @@ function renderCard(res, rec, redirectedFrom) {
       ${table(['Synonym', 'Type', 'Sources'], syns.map(s => [
         `<span class="sci">${esc(s.name)}</span>`,
         chip(s.type || 'Unknown', typeClass(s.type)),
-        sourceChips(s.sources)]))}` : ''}
+        sourceChips(s.sources, shortNames())]))}` : ''}
 
     ${disputed.length ? `<h3>Disputed names filed here</h3>
       <p class="caption">${disputed.length} name${disputed.length === 1 ? '' : 's'} that at

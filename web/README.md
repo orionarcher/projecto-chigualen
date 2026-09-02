@@ -138,7 +138,22 @@ verdicts.
 
 **Run it after touching either resolver.** It currently passes 1,213/1,213.
 
-## Your own checklists
+## Naming
+
+Internal ids — `cites_csv`, `wcvp`, `status_conflict` — are identifiers, not
+names. They appear in export column headers, where a stable machine-readable key
+is the right thing, and nowhere else. The interface uses the names in
+`scripts/_sources.py`: **CITES Listings**, **CITES Appendix II Orchid
+Checklist**, **World Checklist of Vascular Plants**, and so on, with a `short`
+form for chips. Contest classes likewise have a `title` (*Status conflict*,
+*Parent conflict*, *Inherited doubt*) distinct from the id stored in the data.
+
+Export column prefixes were deliberately left alone. They are a data contract —
+anyone who has built a spreadsheet against `wcvp_status` should not have it
+break because the display name changed — and the report now includes a table
+mapping each source's name to its columns.
+
+## Your reference lists
 
 A checklist is parsed in the page and kept in `sessionStorage`, so a reload does
 not lose it and closing the tab discards it. The Streamlit version keeps it in

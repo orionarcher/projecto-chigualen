@@ -133,21 +133,27 @@ const NONE = '— (none) —';
 export function render(container) {
   container.innerHTML = '';
   const root = el(`<div>
-    <h1>Your own checklists</h1>
-    <p>Load a taxonomic backbone of your own — an authority's internal database
-      such as <b>WISIA</b>, a national checklist, a nursery register — and it is
-      compared alongside WCVP, WFO and the two CITES sources everywhere in the app:</p>
+    <h1>Your reference lists</h1>
+    <p class="lede">Load a checklist of your own — an authority's internal database
+      such as <b>WISIA</b>, a national list, a nursery register — and it is compared
+      alongside the five reference sources everywhere in the app.</p>
     <ul>
-      <li>its own <b>verdict</b> on every species card,</li>
-      <li>its own <b>_status</b> and <b>_accepted_name</b> columns in the batch export,</li>
-      <li>names where it disagrees with the consolidated database are called out.</li>
+      <li>Its own verdict on every species card, next to the others.</li>
+      <li>Its own two columns in every report you download.</li>
+      <li>Anywhere it disagrees with the consolidated result is called out.</li>
     </ul>
-    <p class="muted">Checklists are parsed in this browser tab and kept only in
-      its session storage. Nothing is uploaded anywhere and nothing is written to
-      disk; closing the tab discards them.</p>
+    <p class="muted">This is the difference from <b>Check a list</b>: that page
+      answers a question about one list and forgets it. A reference list stays and
+      is consulted on every lookup.</p>
+    <p class="muted">Lists are read in this browser tab and kept only in its
+      session storage. Nothing is uploaded anywhere and nothing is written to disk;
+      closing the tab discards them.</p>
     <div id="loaded"></div>
-    <h3>Add a checklist</h3>
-    <label for="bbfile">CSV or TSV. One row per name; a name column is required.</label>
+    <div class="section">Add a list</div>
+    <p class="section-intro">A CSV or TSV with a header row and one name per row. A
+      column of species names is required. A status column lets the list say a name
+      is <i>not</i> current; an accepted-name column lets it say what replaces it.</p>
+    <label for="bbfile">Choose a file</label>
     <input type="file" id="bbfile" accept=".csv,.tsv,.txt">
     <div id="bbmap"></div>
   </div>`);
@@ -223,8 +229,7 @@ export function render(container) {
       root.querySelector('#loaded').insertAdjacentHTML('afterbegin',
         `<div class="banner info">Loaded <b>${esc(bb.label)}</b> —
           ${nameCount(bb).toLocaleString()} names. It now appears on species cards
-          and in batch exports as <code>${esc(bb.id)}_status</code> /
-          <code>${esc(bb.id)}_accepted_name</code>.
+          and in every report you download.
           ${persisted ? '' : '<br><b>Too large to keep in session storage</b> — it is ' +
             'loaded for this page view but will be lost on reload.'}</div>`);
     });
@@ -233,18 +238,12 @@ export function render(container) {
 
 function paintLoaded(host, container) {
   const all = Object.values(read());
-  if (!all.length) {
-    host.innerHTML = `<div class="banner info">No checklists loaded. Expected shape:
-      a column of scientific names, optionally a status column
-      (<code>accepted</code> / <code>synonym</code>) and a column giving the
-      accepted name for synonyms.</div>`;
-    return;
-  }
-  host.innerHTML = `<h3>Loaded checklists</h3>${table(
-    ['Checklist', 'Column prefix', 'Usable names', 'Rows read', 'Columns mapped', ''],
+  if (!all.length) { host.innerHTML = ''; return; }
+  host.innerHTML = `<div class="section">Loaded lists</div>${table(
+    ['List', 'Report columns', 'Usable names', 'Rows read', 'Columns mapped', ''],
     all.map(bb => [
       `<b>${esc(bb.label)}</b>`,
-      `<code>${esc(bb.id)}</code>`,
+      `<code>${esc(bb.id)}_status</code>`,
       nameCount(bb).toLocaleString(),
       bb.nRows.toLocaleString() + (bb.nUnparseable
         ? ` <span class="muted">(${bb.nUnparseable.toLocaleString()} unparseable)</span>` : ''),

@@ -37,11 +37,10 @@ import pandas as pd
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from _sources import (  # noqa: E402
-    CITES_DISTINCTION,
     CONTEST_CLASSES,
-    NOT_COMPARED,
     PIPELINE_ORDER,
     REGISTRY,
+    TYPING_NEVER_CONTESTS,
     split_source_list,
 )
 
@@ -168,6 +167,7 @@ def main() -> int:
     index = {
         "sources": PIPELINE_ORDER,
         "sourceLabels": {s: REGISTRY[s].label for s in PIPELINE_ORDER},
+        "sourceShort": {s: REGISTRY[s].short for s in PIPELINE_ORDER},
         "sourceColours": {s: REGISTRY[s].colour for s in PIPELINE_ORDER},
         "shards": SHARDS,
         "names": names,
@@ -193,7 +193,7 @@ def main() -> int:
     sources_payload = {
         "sources": [
             {
-                "id": src.id, "label": src.label, "kind": src.kind,
+                "id": src.id, "label": src.label, "short": src.short, "kind": src.kind,
                 "oneLiner": src.one_liner, "origin": src.origin,
                 "edition": src.edition, "licence": src.licence,
                 "contributes": src.contributes, "doesNotCarry": src.does_not_carry,
@@ -204,16 +204,12 @@ def main() -> int:
             }
             for src in (REGISTRY[s] for s in PIPELINE_ORDER)
         ],
-        "citesDistinction": [
-            {"question": q, "citesCsv": a, "citesPdf": b}
-            for q, a, b in CITES_DISTINCTION
-        ],
         "contestClasses": [
-            {"id": c.id, "colour": c.colour, "headline": c.headline,
-             "definition": c.definition, "compared": c.compared, "example": c.example}
+            {"id": c.id, "title": c.title, "colour": c.colour, "summary": c.summary,
+             "detail": c.detail, "example": c.example}
             for c in CONTEST_CLASSES
         ],
-        "notCompared": [{"title": t, "body": b} for t, b in NOT_COMPARED],
+        "typingNeverContests": TYPING_NEVER_CONTESTS,
         "contestClassCounts": {
             cls: int(n) for cls, n in
             contested.drop_duplicates("binomial")["contest_class"].value_counts().items()

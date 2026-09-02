@@ -16,8 +16,11 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class Source:
-    id: str                      # matches data/clean/<id>.csv and the `source` column
-    label: str                   # short human name
+    id: str                      # internal only: data/clean/<id>.csv, the `source`
+                                 # column, and export column prefixes. Never shown
+                                 # as a name in the interface.
+    label: str                   # what people read
+    short: str                   # chip-sized version of the same name
     kind: str                    # 'backbone' | 'regulatory' | 'curated' | 'custom'
     one_liner: str               # single sentence for chips/tooltips
     origin: str                  # where the bytes come from
@@ -35,9 +38,13 @@ class Source:
 
 WCVP = Source(
     id="wcvp",
-    label="Kew WCVP",
+    label="World Checklist of Vascular Plants",
+    short="Kew WCVP",
     kind="backbone",
-    one_liner="Kew's World Checklist of Vascular Plants — the taxonomic backbone.",
+    one_liner=(
+        "Kew's global checklist, and the taxonomic backbone of this database — "
+        "the default answer to what a species is currently called."
+    ),
     origin=(
         "`wcvp.zip` from Kew's public data repository "
         "(http://sftp.kew.org/pub/data-repositories/WCVP/wcvp.zip), file "
@@ -63,16 +70,20 @@ WCVP = Source(
     homepage="https://powo.science.kew.org/",
     cleaner="scripts/01_clean_wcvp.py",
     notes=(
-        "Highest consolidation priority: where WCVP and another source disagree "
-        "on a scalar field such as authority or rank, WCVP's value is kept."
+        "Where two sources give different values for the same detail — an "
+        "authority string, a rank — Kew's is the one kept."
     ),
 )
 
 WFO = Source(
     id="wfo",
     label="World Flora Online",
+    short="WFO",
     kind="backbone",
-    one_liner="The WFO Darwin Core backbone — a second, independent global checklist.",
+    one_liner=(
+        "A second global checklist, compiled independently of Kew's — the reason "
+        "this database can tell agreement from consensus of one."
+    ),
     origin=(
         "WFO DwC backbone (`classification.csv`) out of `_DwC_backbone_R.zip` "
         "on the World Flora Online Plant List Zenodo record, fetched by "
@@ -100,18 +111,21 @@ WFO = Source(
     homepage="https://www.worldfloraonline.org/",
     cleaner="scripts/05_clean_wfo.py",
     notes=(
-        "Because WFO cannot type its synonyms, a pair seen only by WFO shows as "
-        "`Unknown` rather than as a disagreement."
+        "Because it cannot distinguish homotypic from heterotypic synonyms, a pair "
+        "only this source records is shown as typed *Unknown* — which means "
+        "nobody classified it, not that anybody disagreed."
     ),
 )
 
 CITES_CSV = Source(
     id="cites_csv",
-    label="CITES listings CSV",
+    label="CITES Listings",
+    short="CITES Listings",
     kind="regulatory",
     one_liner=(
-        "The regulatory listing table: which orchid names are on Appendix I, II "
-        "or III, with their annotations and range states."
+        "Which orchid names are regulated, and how. This is the source of legal "
+        "status — the appendix a name sits on, its annotation, and its range "
+        "states. It says nothing about whether the name is taxonomically current."
     ),
     origin=(
         "A Species+ / CITES Checklist comma-separated export, delivered as "
@@ -139,20 +153,23 @@ CITES_CSV = Source(
     homepage="https://speciesplus.net/",
     cleaner="scripts/02_clean_cites_csv.py",
     notes=(
-        "This is the source of *legal* status. It says nothing about taxonomy, so "
-        "a name that CITES lists is treated here as accepted-by-CITES even when "
-        "the botanical backbones have since sunk it into another genus — which is "
-        "the single most common cause of a `status_conflict`."
+        "A name that CITES lists is treated here as accepted *by CITES*, even when "
+        "the botanical checklists have since moved it into another genus. That is "
+        "the single most common reason a name ends up contested, and it is a real "
+        "regulatory fact rather than an error — which is why such names are "
+        "surfaced rather than quietly resolved one way or the other."
     ),
 )
 
 CITES_PDF = Source(
     id="cites_pdf",
-    label="CITES Appendix II Orchid Checklist (PDF)",
+    label="CITES Appendix II Orchid Checklist",
+    short="CITES Checklist",
     kind="regulatory",
     one_liner=(
-        "The nomenclatural cross-reference that maps any name on a permit onto "
-        "the accepted name used in the listings."
+        "The official cross-reference from any name that might appear on a permit "
+        "to the name CITES uses for it. Where the Listings tell you a name's legal "
+        "status, this tells you which name to look that status up under."
     ),
     origin=(
         "*CITES Appendix II Orchid Checklist* (2022, UNEP-WCMC and the Royal "
@@ -181,17 +198,22 @@ CITES_PDF = Source(
     cleaner="scripts/03_parse_cites_pdf.py",
     notes=(
         "Part II (accepted binomials only) is skipped as redundant with the "
-        "listings CSV, and Part III (country checklist) is out of scope. "
-        "`source_record_id` is a page/­coordinate stamp (`p214_y381.2_3`) because "
-        "the PDF has no record ids — it lets you find the printed line again."
+        "listings, and Part III (the country checklist) is out of scope. The PDF "
+        "carries no record numbers, so each pair is stamped with the page and "
+        "position it was read from — enough to find the printed line again."
     ),
 )
 
 USER_SYNONYMS = Source(
     id="user_synonyms",
-    label="Curated synonyms",
+    label="Curated Synonyms",
+    short="Curated",
     kind="curated",
-    one_liner="A hand-curated synonym list contributed by the project team.",
+    one_liner=(
+        "A hand-checked synonym list from the project team, carrying the "
+        "homotypic/heterotypic distinction that the two CITES sources and WFO "
+        "cannot supply."
+    ),
     origin=(
         "`full_synonyms_df.csv`, supplied by the project team and placed at "
         "`Chigualen/data/raw/user_synonyms.csv`. Three columns — "
@@ -209,7 +231,10 @@ USER_SYNONYMS = Source(
     colour="#6a1b9a",
     homepage="",
     cleaner="scripts/04_clean_user_synonyms.py",
-    notes="Lowest consolidation priority — it is used to enrich typing, not to override the backbones.",
+    notes=(
+        "Used to fill in detail the other sources leave blank, never to overrule "
+        "them on whether a name is accepted."
+    ),
 )
 
 
@@ -221,64 +246,51 @@ class ContestClass:
     copies: the consolidation that assigns it, the repair script that backfills
     it, the Streamlit page that explains it, and the static build's export.
     """
-    id: str
+    id: str            # internal: the value written to contested_names.csv
+    title: str         # what people read
     colour: str
-    headline: str      # one line, plain language
-    definition: str    # what puts a name in this class
-    compared: str      # which fields the decision actually looked at
+    summary: str       # the whole rule, in one sentence
+    detail: str        # what the consolidation actually compared
     example: str
 
     @property
     def rule(self) -> str:
         """The single string written to contest_class_reference.csv."""
-        return f"{self.definition} Compared field: {self.compared}"
+        return f"{self.summary} {self.detail}"
 
 
 CONTEST_CLASSES: list[ContestClass] = [
     ContestClass(
         id="status_conflict",
+        title="Status conflict",
         colour="#c62828",
-        headline="Sources disagree about whether the name is accepted at all.",
-        definition=(
-            "At least one source records this binomial as an accepted name while "
-            "at least one other records it as a synonym of a different name."
-        ),
-        compared="`relation` — `accepted` vs `synonym_of` — across sources.",
+        summary="One source calls the name accepted; another calls it a synonym of something else.",
+        detail="Decided by comparing whether each source files the name as accepted or as a synonym.",
         example=(
-            "*Anathallis ariasii* is an accepted listing in the CITES listings CSV, "
-            "while WCVP and WFO both sink it into *Stelis ariasii*."
+            "The CITES Listings accept *Anathallis ariasii*; Kew and WFO both treat "
+            "it as a synonym of *Stelis ariasii*."
         ),
     ),
     ContestClass(
         id="parent_conflict",
+        title="Parent conflict",
         colour="#ef6c00",
-        headline="Everyone agrees it is a synonym; nobody agrees of what.",
-        definition=(
-            "Every source that mentions the binomial calls it a synonym, but they "
-            "name different accepted parents for it."
-        ),
-        compared=(
-            "`accepted_name` on the synonym rows — the set of distinct parents "
-            "claimed across sources has more than one member."
-        ),
+        summary="Every source agrees the name is a synonym — but not of the same species.",
+        detail="Decided by comparing the accepted species each source files the synonym under.",
         example=(
             "*Heteranthocidium ariasii* is filed under *Oncidium ariasii* by one "
-            "source and under a different parent by another."
+            "source and under a different species by another."
         ),
     ),
     ContestClass(
         id="parent_contested",
+        title="Inherited doubt",
         colour="#f9a825",
-        headline="Nothing disagrees about this name — its parent is the problem.",
-        definition=(
-            "Every source agrees the binomial is a synonym, and they all name the "
-            "same parent. But that parent is itself contested, so the placement "
-            "cannot be resolved."
-        ),
-        compared="nothing on this name. The class is inherited from the parent.",
+        summary="Nothing about this name is disputed; the species it belongs to is.",
+        detail="Nothing on this name was compared — the doubt is carried over from its accepted species.",
         example=(
-            "*Oncidium isidrense* is unanimously a synonym of *Oncidium ariasii* — "
-            "but *Oncidium ariasii* is itself a `status_conflict`."
+            "*Oncidium isidrense* is unanimously a synonym of *Oncidium ariasii*, "
+            "and *Oncidium ariasii* is itself a status conflict."
         ),
     ),
 ]
@@ -286,50 +298,13 @@ CONTEST_CLASSES: list[ContestClass] = [
 CONTEST_CLASS_BY_ID: dict[str, ContestClass] = {c.id: c for c in CONTEST_CLASSES}
 CONTEST_CLASS_RULE: dict[str, str] = {c.id: c.rule for c in CONTEST_CLASSES}
 
-
-# The distinction readers get wrong most often, as structured rows so the
-# Streamlit page and the static build render the same facts.
-CITES_DISTINCTION: list[tuple[str, str, str]] = [
-    ("Question it answers",
-     "Is this name regulated, and how?",
-     "What is the current name for the name on this permit?"),
-    ("Origin",
-     "CITES species-listings export (Species+ / CITES Checklist shape)",
-     "*CITES Appendix II Orchid Checklist*, 2022, UNEP-WCMC & RBG Kew — Part I, "
-     "the 'ALL NAMES → ACCEPTED NAME' table"),
-    ("Shape",
-     "one row per listed taxon",
-     "one row per synonym → accepted-name pair"),
-    ("Gives you",
-     "Appendix I/II/III, the annotation text, range states, the author citation "
-     "(usually with a year)",
-     "the synonym-to-accepted mapping used for CITES purposes"),
-    ("Cannot give you",
-     "any synonym at all — every row is read as accepted",
-     "the appendix, identifiers, or homotypic/heterotypic typing"),
-    ("Rows contributed",
-     "29,347 accepted listings",
-     "12,746 synonym pairs"),
-]
-
-# Comparisons the consolidation deliberately does not make.
-NOT_COMPARED: list[tuple[str, str]] = [
-    ("Synonym type",
-     "A disagreement about homotypic vs heterotypic **never** makes a name "
-     "contested. If sources agree the name is a synonym and agree on the parent, "
-     "the pair stays in the consolidated database with "
-     "`synonym_type_consensus = Mixed`. Look for `Mixed` in the synonym table on "
-     "a species card — that is where typing disagreements surface."),
-    ("Authority strings",
-     "WCVP writes `(Luer & Hirtz) Pridgeon & M.W.Chase`, the CITES listings write "
-     "`(Luer & Hirtz) Pridgeon & M.W.Chase, 2001`. Comparing these would flag "
-     "thousands of names over punctuation. The highest-priority source's string "
-     "is kept and the rest stay visible per-source."),
-    ("Infraspecific taxa",
-     "Everything is compared at the **binomial** rank. A source that calls "
-     "*Vanda falcata* subsp. *falcata* a synonym of something is not treated as "
-     "disagreeing about *Vanda falcata* itself."),
-]
+# The question the CITES authority asked outright, and the answer, kept next to
+# the rules it qualifies rather than in a section of its own.
+TYPING_NEVER_CONTESTS = (
+    "A disagreement about whether a synonym is homotypic or heterotypic never "
+    "makes a name contested. Those pairs stay in the database, typed **Mixed** in "
+    "the synonym table on the species card."
+)
 
 
 REGISTRY: dict[str, Source] = {

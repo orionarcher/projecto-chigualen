@@ -8,6 +8,8 @@ import { esc, table } from './dom.js';
 export * from './dom.js';
 
 export const sourceLabel = (s) => index()?.sourceLabels?.[s] || s;
+export const sourceShort = (s) => index()?.sourceShort?.[s] || s;
+export const shortNames = () => index()?.sourceShort || {};
 
 export const STATUS_LABEL = {
   [STATUS.ACCEPTED]:  'accepted',
@@ -24,26 +26,26 @@ export const STATUS_LABEL = {
  *  sources, which is the whole point of loading one.
  */
 export function perSourcePanel(res) {
-  const row = (name, sub, v) => [
-    `<b>${name}</b><br><span class="muted">${sub}</span>`,
+  const row = (name, v) => [
+    `<b>${name}</b>`,
     `<span class="st-${esc(v.status)}">${esc(STATUS_LABEL[v.status] || v.status)}</span>`,
     `<span class="sci">${esc(v.acceptedName)}</span>`,
     `<span class="muted">${esc(v.detail)}</span>`,
   ];
 
-  const rows = index().sources.map(s => row(esc(sourceLabel(s)), esc(s), res.perSource[s]));
+  const rows = index().sources.map(s => row(esc(sourceLabel(s)), res.perSource[s]));
 
   const mine = backbone.verdictsFor(res.binomial);
   const registered = backbone.registered();
   for (const [id, v] of Object.entries(mine)) {
-    rows.push(row(`${esc(registered[id].label)} <span class="kind">yours</span>`, esc(id), v));
+    rows.push(row(`${esc(registered[id].label)} <span class="kind">yours</span>`, v));
   }
 
   return `<h3>What each source says</h3>
     <p class="caption">Resolved for <span class="sci">${esc(res.binomial)}</span>.
-      <code>not in source</code> means that source has no record of this binomial —
-      not that it rejects the name.</p>
-    ${table(['Source', 'Says', 'Name it treats as current', 'Detail'], rows)}
+      &ldquo;Not in source&rdquo; means that source has no record of this name — not
+      that it rejects it.</p>
+    ${table(['Source', 'Says', 'Name it treats as current', 'Notes'], rows)}
     ${disagreementNote(res, mine, registered)}`;
 }
 
