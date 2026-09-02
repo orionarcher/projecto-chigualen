@@ -58,6 +58,8 @@ document.getElementById('nav').addEventListener('click', (e) => {
     });
     note.textContent = `ready in ${Math.round(performance.now() - t0)} ms`;
     go((location.hash || '#search').slice(1));
+    // Warm the search structures once the page is interactive.
+    (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(() => data.warmSearch());
   } catch (err) {
     main.innerHTML = `<div class="banner error"><h4>Could not load the index</h4>
       <p>${esc(err.message)}</p>

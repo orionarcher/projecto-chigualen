@@ -45,6 +45,36 @@ python3 -m http.server -d web 8610
 Then open <http://localhost:8610>. Opening `index.html` from the filesystem will
 not work — browsers block `fetch` on `file://`.
 
+## The search box
+
+Suggestions appear from the first character, ranked by how literally the query
+matched. Five ways in, tried cheapest first:
+
+| | Query | Finds |
+|---|---|---|
+| exact | `dracula chimaera` | opens straight away |
+| name prefix | `stelis ar` | Stelis ariasii, arrecta, arbuscula… |
+| genus + epithet prefix | `van fal` | Vanda falcata |
+| epithet alone | `falcata` | Vanda falcata, Stenia falcata… |
+| substring | `ariasii` | Stelis ariasii, Ida ariasii… |
+| within one or two typos | `anathalis ariasi` | Anathallis ariasii, marked *closest spelling* |
+
+**Matching on the epithet alone matters more here than in most search boxes.**
+This database exists because genera keep changing: someone reading an older
+permit knows the epithet and has a genus that has since been sunk, which is
+precisely the case a plain prefix search cannot help with.
+
+The substring and typo passes only run when the literal ones turned up fewer
+than three hits, so a well-formed query never pays for them. Typing costs
+1–20 ms per keystroke on the full 79k-name index; the epithet ordering is built
+once on idle after first paint rather than on the first character typed.
+
+Arrow keys move through the list, Enter takes the highlighted row (or the top
+one, if you have not moved), Escape closes it.
+
+Ranking is *tier, then accepted before synonym before contested, then shorter
+name, then alphabetical* — so a name that is current outranks one that is not.
+
 ## The parity check
 
 `web/js/data.js` is a **second implementation** of the logic that decides what a
@@ -65,7 +95,8 @@ verdicts.
 ## What is not ported
 
 `app/backbone.py` (custom checklists) and `app/sources_page.py` (the data-source
-descriptions) are not in this build. Neither is hard — the sources page is
+descriptions) are not in this build. The Streamlit app also still has its
+original plain-prefix search rather than the typeahead described above. Neither is hard — the sources page is
 static prose driven by `scripts/_sources.py`, and custom backbones are already
 session-only, so they translate directly. They were left out to keep the
 prototype honest about what has actually been verified.

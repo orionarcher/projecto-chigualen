@@ -1,0 +1,4 @@
+# What the Netlify build needs, and nothing else. scripts/10_export_web.py reads
+# the pipeline output with pandas and writes JSON; it never imports streamlit, so
+# installing the app runtime here would only slow every deploy down.
+pandas>=2.0

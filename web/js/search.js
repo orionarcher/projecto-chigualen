@@ -16,19 +16,29 @@ const CONTEST_HEADLINE = {
 };
 
 let root, resultsEl, detailEl, inputEl;
+let active = -1;      // highlighted suggestion, -1 = none
+let current = [];     // suggestions currently on screen
+
+const KIND_LABEL = ['accepted', 'synonym', 'contested'];
+const KIND_COLOUR = ['var(--accepted)', 'var(--synonym)', 'var(--contested)'];
+const TIER_NOTE = ['', '', '', 'matched on the epithet', 'matched inside the name', 'closest spelling'];
 
 export function render(container, initialQuery = '') {
   const idx = data.index();
   container.innerHTML = '';
   root = el(`<div>
     <h1>Search orchids</h1>
-    <p class="caption">Type an accepted name or a synonym. The consolidated database
-      has ${idx.counts.species.toLocaleString()} accepted species and
-      ${idx.counts.synonymPairs.toLocaleString()} synonym pairs across
-      ${idx.sources.length} sources.</p>
-    <label for="q">Search by name</label>
-    <input type="text" id="q" placeholder="e.g. Dracula chimaera" autocomplete="off" spellcheck="false">
-    <ul class="results" id="results"></ul>
+    <p class="caption">Start typing an accepted name or a synonym — matches appear as
+      you go. The consolidated database has ${idx.counts.species.toLocaleString()}
+      accepted species and ${idx.counts.synonymPairs.toLocaleString()} synonym pairs
+      across ${idx.sources.length} sources.</p>
+    <div class="combo">
+      <label for="q">Search by name</label>
+      <input type="text" id="q" placeholder="e.g. Dracula chimaera" autocomplete="off"
+        spellcheck="false" role="combobox" aria-expanded="false" aria-controls="results"
+        aria-autocomplete="list">
+      <ul class="results" id="results" role="listbox" hidden></ul>
+    </div>
     <div id="detail"></div>
   </div>`);
   container.appendChild(root);
@@ -38,33 +48,100 @@ export function render(container, initialQuery = '') {
   detailEl = root.querySelector('#detail');
 
   inputEl.addEventListener('input', () => showMatches(inputEl.value));
+  inputEl.addEventListener('keydown', onKeyDown);
+  inputEl.addEventListener('focus', () => { if (inputEl.value.trim()) showMatches(inputEl.value); });
+  document.addEventListener('click', (e) => { if (!root.contains(e.target)) closeList(); });
+
   if (initialQuery) { inputEl.value = initialQuery; showMatches(initialQuery, true); }
   inputEl.focus();
 }
 
-function showMatches(query, autoOpen = false) {
-  detailEl.innerHTML = '';
-  const q = query.trim();
-  if (q.length < 2) { resultsEl.innerHTML = '<li class="muted">Start typing to see matches.</li>'; return; }
+function closeList() {
+  resultsEl.hidden = true;
+  inputEl.setAttribute('aria-expanded', 'false');
+  active = -1;
+}
 
-  const matches = data.prefixMatches(q, 15);
-  if (!matches.length) {
-    resultsEl.innerHTML = `<li class="muted">No match for “${esc(q)}”. Check the spelling, or try a synonym.</li>`;
+function onKeyDown(ev) {
+  if (resultsEl.hidden || !current.length) {
+    if (ev.key === 'Enter' && inputEl.value.trim()) { showMatches(inputEl.value, true); }
     return;
   }
-  resultsEl.innerHTML = matches.map(name => {
-    const r = data.resolve(name);
-    const kind = r.verdict === 'accepted' ? '' :
-      r.verdict === 'synonym' ? `synonym of ${esc(r.acceptedName)}` : r.verdict;
-    return `<li><button data-name="${esc(name)}"><span class="sci">${esc(name)}</span>
-      <span class="kind">${kind}</span></button></li>`;
-  }).join('');
-  resultsEl.querySelectorAll('button').forEach(b =>
-    b.addEventListener('click', () => open(b.dataset.name)));
+  if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+    ev.preventDefault();
+    active = ev.key === 'ArrowDown'
+      ? (active + 1) % current.length
+      : (active <= 0 ? current.length : active) - 1;
+    paintActive();
+  } else if (ev.key === 'Enter') {
+    ev.preventDefault();
+    // No arrow pressed yet: Enter takes the top match, which is what makes the
+    // box feel predictive rather than like a form field.
+    pick(current[active >= 0 ? active : 0]);
+  } else if (ev.key === 'Escape') {
+    closeList();
+  }
+}
 
-  // An exact hit opens straight away, matching the Streamlit auto-select.
-  const exact = matches.find(n => n.toLowerCase() === data.normalizeQuery(q).toLowerCase());
-  if (exact && (autoOpen || matches.length === 1)) open(exact);
+function paintActive() {
+  [...resultsEl.children].forEach((li, i) => {
+    const on = i === active;
+    li.firstElementChild.classList.toggle('on', on);
+    li.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) li.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+function pick(s) {
+  if (!s) return;
+  inputEl.value = s.name;
+  closeList();
+  open(s.name);
+}
+
+/** Bold the part of the name the query actually matched. */
+function markUp(s) {
+  const name = s.name;
+  if (!s.highlight) return esc(name);
+  const [start, len] = s.highlight;
+  if (start >= name.length) return esc(name);
+  return esc(name.slice(0, start)) + '<b class="hit">' +
+         esc(name.slice(start, start + len)) + '</b>' + esc(name.slice(start + len));
+}
+
+function showMatches(query, openTop = false) {
+  const q = query.trim();
+  if (!q) { current = []; closeList(); detailEl.innerHTML = ''; return; }
+
+  current = data.suggest(q, 12);
+  if (!current.length) {
+    resultsEl.hidden = false;
+    inputEl.setAttribute('aria-expanded', 'true');
+    resultsEl.innerHTML = `<li class="muted empty">No name like “${esc(q)}”.
+      Try the species epithet on its own — the genus may have changed.</li>`;
+    return;
+  }
+
+  resultsEl.innerHTML = current.map((s, i) => {
+    const detail = s.kind === 1 ? `synonym of <span class="sci">${esc(s.canonical)}</span>`
+                 : s.kind === 2 ? 'contested'
+                 : 'accepted';
+    return `<li role="option" aria-selected="false"><button data-i="${i}">
+      <span class="sci">${markUp(s)}</span>
+      <span class="kind" style="color:${KIND_COLOUR[s.kind]}">${detail}</span>
+      ${TIER_NOTE[s.tier] ? `<span class="why">${TIER_NOTE[s.tier]}</span>` : ''}
+    </button></li>`;
+  }).join('');
+  resultsEl.hidden = false;
+  inputEl.setAttribute('aria-expanded', 'true');
+  active = -1;
+
+  resultsEl.querySelectorAll('button').forEach(b =>
+    b.addEventListener('click', () => pick(current[Number(b.dataset.i)])));
+
+  // An unambiguous, fully-typed name opens straight away.
+  const exact = current[0] && current[0].tier === 0;
+  if (openTop || exact) { closeList(); open(current[0].name); }
 }
 
 export async function open(name) {
@@ -88,7 +165,7 @@ export async function open(name) {
 
 function goto(name) {
   inputEl.value = name;
-  showMatches(name);
+  closeList();
   open(name);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }

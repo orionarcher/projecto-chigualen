@@ -124,42 +124,186 @@ function entryFor(key) {
 
 const sourcesFromMask = (mask) => INDEX.sources.filter((_, i) => mask & (1 << i));
 
-/** Mirrors prefix_matches() in app/data.py, but ordered: the sorted key array
- *  makes a real prefix range available, which the Python dict scan could not do. */
-export function prefixMatches(query, limit = 15) {
-  const q = normText(query).toLowerCase();
-  if (!q) return [];
-  const keys = INDEX.keys;
-  let lo = 0, hi = keys.length;
-  while (lo < hi) { const mid = (lo + hi) >> 1; keys[mid] < q ? (lo = mid + 1) : (hi = mid); }
+// --------------------------------------------------------- suggestions
 
-  const out = [];
-  for (let i = lo; i < keys.length && keys[i].startsWith(q) && out.length < limit; i++) {
-    out.push(INDEX.names[INDEX.entries[i][1]] === undefined ? keys[i] : displayName(i));
-  }
-  if (out.length >= limit) return dedupe(out, limit);
+/*
+ * Typeahead. Five ways a query can hit, tried cheapest first and scored so the
+ * most literal interpretation wins:
+ *
+ *   0  exact binomial
+ *   1  prefix of the whole name           "stelis ar"  → Stelis ariasii
+ *   2  genus prefix + epithet prefix      "van fal"    → Vanda falcata
+ *   3  prefix of the epithet alone        "falcata"    → Vanda falcata
+ *   4  substring anywhere                 "ariasii"    → Stelis ariasii
+ *   5  within one or two typos            "anathalis"  → Anathallis ariasii
+ *
+ * (3) matters more here than in most search boxes: this database exists because
+ * genera keep changing. Somebody reading an old permit knows the epithet and has
+ * the wrong genus, which is exactly the case a plain prefix search cannot help
+ * with. (5) matters because names get typed off paper.
+ */
 
-  // Fall back to substring, as the Streamlit version does.
-  for (let i = 0; i < keys.length && out.length < limit; i++) {
-    if (!keys[i].startsWith(q) && keys[i].includes(q)) out.push(displayName(i));
+let epithets = null;      // epithet of each key, parallel to INDEX.keys
+let byEpithet = null;     // key indices ordered by epithet
+let genusEnd = null;      // index of the space in each key
+
+/** Built on first search, not at load — it costs ~100 ms and nothing on first
+ *  paint needs it. */
+function ensureEpithetIndex() {
+  if (byEpithet) return;
+  const keys = INDEX.keys, n = keys.length;
+  epithets = new Array(n);
+  genusEnd = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    const sp = keys[i].indexOf(' ');
+    genusEnd[i] = sp;
+    epithets[i] = sp < 0 ? keys[i] : keys[i].slice(sp + 1);
   }
-  return dedupe(out, limit);
+  byEpithet = new Uint32Array(n);
+  for (let i = 0; i < n; i++) byEpithet[i] = i;
+  byEpithet.sort((a, b) => (epithets[a] < epithets[b] ? -1 : epithets[a] > epithets[b] ? 1 : a - b));
 }
 
-function displayName(i) {
-  const [kind, target] = INDEX.entries[i];
-  // A synonym is offered under its own spelling; selecting it redirects, which
-  // is what the Streamlit app does via the redirect banner.
-  return kind === KIND_SYNONYM ? titleCase(INDEX.keys[i]) : INDEX.names[target];
+/** First position in a sorted string array whose value is >= q. */
+function lowerBound(arr, q) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] < q) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
+/** Same, over an array of indices read through `valueAt`. */
+function lowerBoundBy(order, q, valueAt) {
+  let lo = 0, hi = order.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (valueAt(order[mid]) < q) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
+/** Damerau-Levenshtein, abandoned as soon as it cannot come in under `max`. */
+function withinTypos(a, b, max) {
+  const al = a.length, bl = b.length;
+  if (Math.abs(al - bl) > max) return false;
+  let prev = new Array(bl + 1), cur = new Array(bl + 1), prev2 = new Array(bl + 1);
+  for (let j = 0; j <= bl; j++) prev[j] = j;
+  for (let i = 1; i <= al; i++) {
+    cur[0] = i;
+    let best = cur[0];
+    const lo = Math.max(1, i - max), hi = Math.min(bl, i + max);
+    for (let j = 1; j <= bl; j++) cur[j] = Infinity;
+    for (let j = lo; j <= hi; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+      // transposition — 'aroasii' vs 'ariasii'
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        v = Math.min(v, prev2[j - 2] + 1);
+      }
+      cur[j] = v;
+      if (v < best) best = v;
+    }
+    if (best > max) return false;
+    const spare = prev2; prev2 = prev; prev = cur; cur = spare;
+  }
+  return prev[bl] <= max;
 }
 
 const titleCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function dedupe(list, limit) {
-  const seen = new Set(), out = [];
-  for (const n of list) { if (!seen.has(n)) { seen.add(n); out.push(n); } if (out.length >= limit) break; }
-  return out;
+const KIND_RANK = [0, 1, 2];  // accepted, then synonym, then contested
+
+/**
+ * @returns [{ name, key, kind, canonical, tier, highlight: [start, len] | null }]
+ */
+export function suggest(query, limit = 12) {
+  const raw = normText(query).toLowerCase();
+  if (!raw) return [];
+  ensureEpithetIndex();
+
+  const keys = INDEX.keys;
+  const best = new Map();                       // key index → tier
+  const marks = new Map();                      // key index → [start, len]
+  const note = (i, tier, hl) => {
+    if (!best.has(i) || best.get(i) > tier) { best.set(i, tier); if (hl) marks.set(i, hl); }
+  };
+
+  const tokens = raw.split(' ').filter(Boolean);
+  const exact = normalizeQuery(query).toLowerCase();
+  const CAP = 2000;   // enough to rank well; stops a one-letter query walking 10k keys
+
+  // 0 / 1 — whole-name prefix, straight off the sorted key array.
+  for (let i = lowerBound(keys, raw), n = 0;
+       i < keys.length && keys[i].startsWith(raw) && n < CAP; i++, n++) {
+    note(i, keys[i] === exact ? 0 : 1, [0, raw.length]);
+  }
+
+  // 2 — "van fal": genus prefix plus epithet prefix.
+  if (tokens.length >= 2) {
+    const [g, e] = tokens;
+    for (let i = lowerBound(keys, g), n = 0;
+         i < keys.length && keys[i].startsWith(g) && n < CAP; i++, n++) {
+      if (epithets[i].startsWith(e)) note(i, 2, [genusEnd[i] + 1, e.length]);
+    }
+  }
+
+  // 3 — epithet prefix, for when the genus has moved since the name was written.
+  if (tokens.length === 1) {
+    for (let p = lowerBoundBy(byEpithet, raw, (k) => epithets[k]), n = 0;
+         p < byEpithet.length && epithets[byEpithet[p]].startsWith(raw) && n < CAP; p++, n++) {
+      const i = byEpithet[p];
+      note(i, 3, [genusEnd[i] + 1, raw.length]);
+    }
+  }
+
+  // 4 — substring anywhere. Skipped for very short queries, where it would match
+  // most of the database and tell the reader nothing.
+  const RESCUE_BELOW = 3;
+  if (best.size < RESCUE_BELOW && raw.length >= 3) {
+    for (let i = 0; i < keys.length; i++) {
+      if (best.has(i)) continue;
+      const at = keys[i].indexOf(raw);
+      if (at > 0) note(i, 4, [at, raw.length]);
+    }
+  }
+
+  // 5 — typos. Bounded to keys sharing the first character: a first-letter typo
+  // is rare, and the binary-searched range turns a 79k-way edit distance into a
+  // few thousand.
+  const maxTypos = raw.length >= 8 ? 2 : raw.length >= 5 ? 1 : 0;
+  if (best.size < RESCUE_BELOW && maxTypos) {
+    const first = raw[0];
+    const lo = lowerBound(keys, first);
+    for (let i = lo; i < keys.length && keys[i][0] === first; i++) {
+      if (best.has(i)) continue;
+      const against = tokens.length > 1 ? keys[i] : keys[i].slice(0, genusEnd[i]);
+      if (withinTypos(raw, against, maxTypos)) note(i, 5, null);
+    }
+  }
+
+  const out = [...best.entries()].map(([i, tier]) => {
+    const [kind, target] = INDEX.entries[i];
+    return {
+      i, tier, kind,
+      key: keys[i],
+      name: kind === KIND_SYNONYM ? titleCase(keys[i]) : INDEX.names[target],
+      canonical: INDEX.names[target],
+      highlight: marks.get(i) || null,
+    };
+  });
+
+  out.sort((a, b) =>
+    a.tier - b.tier ||
+    KIND_RANK[a.kind] - KIND_RANK[b.kind] ||
+    a.key.length - b.key.length ||
+    (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+
+  return out.slice(0, limit);
 }
+
+/** Build the epithet index ahead of the first keystroke.
+ *  It costs ~100 ms, which is invisible while the reader is looking at the page
+ *  but very visible if it lands on the first character they type. */
+export function warmSearch() { ensureEpithetIndex(); }
+
+/** Kept for callers that only want names. */
+export const prefixMatches = (query, limit = 15) => suggest(query, limit).map(s => s.name);
 
 // --------------------------------------------------------------- resolve
 
