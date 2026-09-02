@@ -24,12 +24,27 @@ const shardCache = new Map();
 // Resolve data paths against this module, not the page. web/parity/ sits at a
 // different depth from web/index.html, and a deploy may live under a subpath.
 const DATA = new URL('../data/', import.meta.url);
-const dataUrl = (path) => new URL(path, DATA).href;
+const BUILD_URL = new URL('../build.json', DATA);
+
+// Data files keep the same names across deploys, so they are cached hard and
+// busted by a build id instead. Without this, `immutable` would mean a rebuilt
+// database never reaches anyone who has visited before.
+let BUILD = '';
+const dataUrl = (path) =>
+  new URL(path + (BUILD ? (path.includes('?') ? '&' : '?') + 'v=' + BUILD : ''), DATA).href;
 
 // ---------------------------------------------------------------- loading
 
 export async function load(onProgress) {
   if (INDEX) return INDEX;
+
+  // build.json is small and deliberately uncached; everything it points at is
+  // then safe to cache for a year.
+  BUILD = await fetch(BUILD_URL.href, { cache: 'no-cache' })
+    .then(r => (r.ok ? r.json() : {}))
+    .then(b => b.build || '')
+    .catch(() => '');
+
   const res = await fetch(dataUrl('index.json'));
   if (!res.ok) throw new Error(`index.json: HTTP ${res.status}`);
 

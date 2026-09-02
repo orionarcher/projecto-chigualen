@@ -36,3 +36,5 @@ Chigualen/data/out/*.pre-repair
 # scripts/10_export_web.py, on every Netlify build. 35 MB across 513 files, all
 # of it derivable — no reason to carry it in git.
 web/data/
+web/build.json
+web/css/sources.css

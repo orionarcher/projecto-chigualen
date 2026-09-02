@@ -10,18 +10,27 @@
   # modern interpreter rather than inherit whatever the build image defaults to.
   PYTHON_VERSION = "3.11"
 
-# The data files are rewritten on every deploy and served from a per-deploy URL,
-# so they can be cached hard. index.json is the one worth getting right: it is
-# ~1 MB gzipped and every visitor fetches it before anything renders.
+# Data files are safe to cache for a year *because* web/js/data.js appends the
+# build id from /build.json to every request: the URL changes exactly when the
+# content does. Without that, caching these immutably would pin visitors to
+# whichever version of the database they first loaded.
 [[headers]]
   for = "/data/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# Code has no such stamp, so it must revalidate. These files are a few kB and
+# ETag makes the common case a 304 — cheap, and a deploy takes effect at once
+# rather than an hour later.
 [[headers]]
   for = "/js/*"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/*"

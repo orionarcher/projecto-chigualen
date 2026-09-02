@@ -54,6 +54,25 @@ second bug — the parity page's inline `<script>` never ran in production. Both
 are fixed, and both were invisible until the local server started sending the
 real headers.
 
+### Caching
+
+`/data/*` is served `immutable` for a year, which is only safe because the URLs
+carry a build stamp. `scripts/10_export_web.py` hashes `index.json` into
+`web/build.json`, and `js/data.js` reads that first and appends `?v=<id>` to
+every data request. The URL therefore changes exactly when the data changes, and
+not otherwise. Without it, `immutable` would pin every returning visitor to
+whichever version of the database they happened to load first — a rebuilt
+pipeline would simply never reach them.
+
+Code carries no such stamp, so `/js/*` and `/css/*` revalidate
+(`max-age=0, must-revalidate`). They are a few kB and ETag makes the usual case
+a 304. An earlier `max-age=3600` here meant a deploy took up to an hour to
+reach anyone who had already visited — which is exactly how the first CSP fix
+appeared not to work.
+
+`css/sources.css` is generated but lives under `/css/`, not `/data/`, precisely
+so it revalidates: it has no build stamp on its URL.
+
 ### Working within the CSP
 
 `default-src 'self'` with no `'unsafe-inline'` for either scripts or styles.

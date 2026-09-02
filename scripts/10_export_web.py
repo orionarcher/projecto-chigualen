@@ -25,6 +25,7 @@ what is left. See scripts/_sources.py for the source order the bitmask uses.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import sys
@@ -193,7 +194,8 @@ def main() -> int:
             f".src-{source_id} {{ color: {colour}; background: {colour}22; "
             f"border-color: {colour}55; }}"
         )
-    css_path = WEB_DATA / "sources.css"
+    css_path = WEB_DATA.parent / "css" / "sources.css"
+    css_path.parent.mkdir(parents=True, exist_ok=True)
     css_path.write_text("\n".join(css) + "\n", encoding="utf-8")
     print(f"sources.css: {len(PIPELINE_ORDER)} source colours")
 
@@ -235,6 +237,15 @@ def main() -> int:
         total_c += write_json(WEB_DATA / "contested" / f"{shard:03d}.json", payload)
     print(f"contested/: {len(contested_shards)} shards, {total_c/1e6:.1f} MB total, "
           f"{total_c/max(len(contested_shards),1)/1e3:.0f} kB average")
+
+    # Every deploy rewrites these files at the same URLs, so `immutable` caching
+    # would mean a returning visitor never sees a rebuilt database. Stamp a build
+    # id derived from the content; web/js/data.js appends it as ?v= so the URL
+    # changes whenever the data does, and stays stable when it does not.
+    build_id = hashlib.sha256((WEB_DATA / "index.json").read_bytes()).hexdigest()[:12]
+    build_path = WEB_DATA.parent / "build.json"
+    build_path.write_text(json.dumps({"build": build_id}), encoding="utf-8")
+    print(f"build id: {build_id}")
 
     grand = index_bytes + total + total_c
     print(f"\ntotal uncompressed: {grand/1e6:.1f} MB")
