@@ -112,15 +112,6 @@ export async function render(container) {
     </div>
     <div class="banner info">${md(p.typingNeverContests)}</div>
 
-    <div class="section">Coming: CITES Standard Nomenclatures</div>
-    <p class="section-intro">Machine-readable editions of the CITES Standard
-      Nomenclatures, current and historical, are the obvious next sources to add.
-      They are the reference the Parties actually adopted, and historical editions
-      would let a name be checked against the nomenclature in force when a permit
-      was issued. A historical edition would enter as a source in its own right
-      rather than replacing the current one, so a disagreement between editions
-      would surface like any other.</p>
-
     <div class="section">What is in this build</div>
     <div class="stats">
       <div class="stat plain"><div class="n">${p.counts.species.toLocaleString()}</div>

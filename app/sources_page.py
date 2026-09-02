@@ -122,31 +122,6 @@ def render() -> None:
     st.info(TYPING_NEVER_CONTESTS, icon="ℹ")
 
     st.divider()
-    st.subheader("Coming: CITES Standard Nomenclatures")
-    st.markdown(
-        """
-Machine-readable editions of the **CITES Standard Nomenclatures**, current and
-historical, are the obvious next sources to add: they are the reference the
-Parties actually adopted, and historical editions would let a name be checked
-against the nomenclature that was in force at the time a permit was issued.
-
-The pipeline is already shaped for this. Adding a source means:
-
-1. write a cleaner that emits `Chigualen/data/clean/<id>.csv` in the frozen
-   schema in `scripts/_normalize.py`;
-2. append one `Source(...)` entry to `scripts/_sources.py` — that is what fills
-   in this page, the colour coding, and the export columns;
-3. add its id to `PIPELINE_ORDER` at the priority it deserves.
-
-Nothing else needs to change: consolidation, the conflict classes, the species
-cards and the batch export all read the registry. A historical edition would
-enter as its own source (`cites_nomenclature_2019`, say) rather than replacing
-the current one, so an edition-to-edition disagreement would surface as an
-ordinary `status_conflict` you could read off the per-source columns.
-        """
-    )
-
-    st.divider()
     st.subheader("What is in this build")
     wide = load_consolidated()
     long_df = load_long()
