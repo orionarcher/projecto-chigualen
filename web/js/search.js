@@ -1,7 +1,8 @@
 /** Search page: query, results, species card, contested view.
  *  Browser port of app/search.py. */
 import * as data from './data.js';
-import { el, esc, chip, sourceChips, typeClass, citesClass, perSourcePanel, table } from './ui.js';
+import { el, esc, chip, sourceChips, typeClass, citesClass, table } from './dom.js';
+import { perSourcePanel } from './ui.js';
 
 const CONTEST_HEADLINE = {
   status_conflict: 'Sources disagree about whether this name is accepted at all.',

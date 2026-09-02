@@ -4,7 +4,9 @@
  *  The whole point of the static build: the uploaded checklist is parsed and
  *  resolved in the page. It is never sent anywhere. */
 import * as data from './data.js';
-import { el, esc, table, downloadCsv } from './ui.js';
+import * as backbone from './backbone.js';
+import { el, esc, table } from './dom.js';
+import { parseCsv, downloadCsv } from './csv.js';
 
 // Colours live in css/style.css as .cat-<key>; see the CSP note there.
 const CATEGORIES = [
@@ -18,33 +20,6 @@ const VERDICT_TO_CATEGORY = {
   accepted: 'matched_accepted', synonym: 'matched_synonym',
   contested: 'contested', missing: 'missing', unparseable: 'unparseable',
 };
-
-/** Minimal RFC-4180 parser: quoted fields, embedded commas and newlines,
- *  doubled quotes. The CITES listings export needs all three. */
-export function parseCsv(text, sep) {
-  if (!sep) {
-    const head = text.slice(0, 4000);
-    sep = (head.split('\t').length > head.split(',').length) ? '\t' : ',';
-  }
-  const rows = [];
-  let row = [], field = '', quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (quoted) {
-      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false; }
-      else field += c;
-    } else if (c === '"') { quoted = true; }
-    else if (c === sep) { row.push(field); field = ''; }
-    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-    else if (c !== '\r') { field += c; }
-  }
-  if (field || row.length) { row.push(field); rows.push(row); }
-  if (!rows.length) return { headers: [], records: [] };
-  const headers = rows[0].map(h => h.trim());
-  const records = rows.slice(1).filter(r => r.some(v => v.trim()))
-    .map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])));
-  return { headers, records };
-}
 
 export function render(container) {
   container.innerHTML = '';
@@ -78,6 +53,12 @@ export function render(container) {
           `<option${i === Math.max(guess, 0) ? ' selected' : ''}>${esc(h)}</option>`).join('')}</select>
         <label for="label">Authority name (for the report filename)</label>
         <input type="text" id="label" placeholder="e.g. Sander's List 2024">
+        ${Object.keys(backbone.registered()).length
+          ? `<p class="muted">Your checklists will each get a column pair too:
+              ${Object.keys(backbone.registered()).map(id =>
+                `<code>${esc(id)}_status</code>`).join(', ')}.</p>`
+          : `<p class="muted">Tip: load your own backbone on the
+              <b>Your own checklists</b> page and it gets its own columns here too.</p>`}
         <p></p><button class="primary" id="go">Analyze</button>
       </div>`;
     mapEl.querySelector('#go').addEventListener('click', () => {
@@ -123,6 +104,13 @@ export async function buildReport(records, nameCol) {
       row[`${s}_status`] = res.perSource[s].status;
       row[`${s}_accepted_name`] = res.perSource[s].acceptedName;
     }
+    // Loaded checklists get the same column pair, so an authority can diff a list
+    // against its own backbone and the five built-in sources in one pass.
+    for (const [id, bb] of Object.entries(backbone.registered())) {
+      const v = backbone.lookup(bb, res.binomial);
+      row[`${id}_status`] = v.status;
+      row[`${id}_accepted_name`] = v.acceptedName;
+    }
     return row;
   }));
 }
@@ -136,7 +124,7 @@ async function analyze(records, nameCol, label, outEl) {
   const counts = {};
   for (const r of report) counts[r.diff_category] = (counts[r.diff_category] || 0) + 1;
   const base = (label || 'authority').replace(/\s+/g, '_').toLowerCase();
-  const srcs = data.index().sources;
+  const srcs = [...data.index().sources, ...Object.keys(backbone.registered())];
 
   outEl.innerHTML = `
     <h3>Diff summary — ${esc(label || 'authority')} (${report.length.toLocaleString()} rows)</h3>

@@ -138,11 +138,58 @@ verdicts.
 
 **Run it after touching either resolver.** It currently passes 1,213/1,213.
 
+## Your own checklists
+
+A checklist is parsed in the page and kept in `sessionStorage`, so a reload does
+not lose it and closing the tab discards it. The Streamlit version keeps it in
+server-side session state, which means the file is uploaded first; here it never
+leaves the tab.
+
+Once loaded it behaves like a built-in source: its own row in the per-source
+panel on every species card, its own `<id>_status` / `<id>_accepted_name` pair in
+the batch export, and a callout wherever it disagrees with the consolidated
+result. Column auto-mapping guesses across English, German, Spanish and French
+headings, since WISIA — the case this page exists for — is German.
+
+A checklist too large for the ~5 MB session-storage quota still loads; it says
+so, and will not survive a reload.
+
+## One registry, four consumers
+
+Everything factual on the Data sources page — what each source is authoritative
+for, what it cannot tell you, the `cites_csv`/`cites_pdf` distinction, the
+`contest_class` definitions — comes from `data/sources.json`, exported straight
+from `scripts/_sources.py`.
+
+That registry is now the single definition for all four consumers:
+`06_consolidate.py` which assigns a contest class, `09_repair_outputs.py` which
+backfills it, `app/sources_page.py` which explains it, and this build's export.
+They had drifted into three separate copies. Only the narrative around the facts
+is written twice.
+
 ## What is not ported
 
-`app/backbone.py` (custom checklists) and `app/sources_page.py` (the data-source
-descriptions) are not in this build. The Streamlit app also still has its
-original plain-prefix search rather than the typeahead described above. Neither is hard — the sources page is
-static prose driven by `scripts/_sources.py`, and custom backbones are already
-session-only, so they translate directly. They were left out to keep the
-prototype honest about what has actually been verified.
+Nothing, as of this build. The Streamlit app still has its original plain-prefix
+search rather than the typeahead described above — search ranking is
+presentation, deliberately outside the resolver the two implementations must
+agree on, so they are allowed to differ.
+
+## Module layout
+
+```
+dom.js       rendering helpers, no imports
+csv.js       RFC-4180 parse + download, no imports
+data.js      index loading, resolve(), suggest()
+backbone.js  your own checklists          → data, csv, dom
+ui.js        per-source panel             → data, backbone, dom
+search.js    search, species card         → data, dom, ui
+ingest.js    batch diff                   → data, backbone, dom, csv
+sources.js   data sources page            → dom, backbone
+app.js       shell and router
+```
+
+Deliberately a DAG. `ui.js` needs `backbone.js` for the per-source panel, and
+`backbone.js` needs rendering helpers and CSV parsing — which is why those live
+in `dom.js` and `csv.js` rather than in `ui.js` and `ingest.js`. ES modules
+tolerate cycles, but only until someone reads an imported binding during module
+evaluation instead of inside a function.

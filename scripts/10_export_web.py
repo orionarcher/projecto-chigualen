@@ -36,7 +36,14 @@ import pandas as pd
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from _sources import PIPELINE_ORDER, REGISTRY, split_source_list  # noqa: E402
+from _sources import (  # noqa: E402
+    CITES_DISTINCTION,
+    CONTEST_CLASSES,
+    NOT_COMPARED,
+    PIPELINE_ORDER,
+    REGISTRY,
+    split_source_list,
+)
 
 ROOT = SCRIPT_DIR.parent
 OUT_DIR = ROOT / "Chigualen" / "data" / "out"
@@ -180,6 +187,47 @@ def main() -> int:
     index_bytes = write_json(WEB_DATA / "index.json", index)
     print(f"index.json: {index_bytes/1e6:.1f} MB, {len(keys)} keys, {len(names)} names")
 
+    # Everything the Data sources page renders. Its own file rather than part of
+    # index.json: only that page needs it, and index.json is on the critical path
+    # for first paint.
+    sources_payload = {
+        "sources": [
+            {
+                "id": src.id, "label": src.label, "kind": src.kind,
+                "oneLiner": src.one_liner, "origin": src.origin,
+                "edition": src.edition, "licence": src.licence,
+                "contributes": src.contributes, "doesNotCarry": src.does_not_carry,
+                "relations": src.relations, "homepage": src.homepage,
+                "cleaner": src.cleaner, "notes": src.notes,
+                "provenanceConfirmed": src.provenance_confirmed,
+                "speciesTouched": int(wide["sources"].str.contains(src.id, regex=False).sum()),
+            }
+            for src in (REGISTRY[s] for s in PIPELINE_ORDER)
+        ],
+        "citesDistinction": [
+            {"question": q, "citesCsv": a, "citesPdf": b}
+            for q, a, b in CITES_DISTINCTION
+        ],
+        "contestClasses": [
+            {"id": c.id, "colour": c.colour, "headline": c.headline,
+             "definition": c.definition, "compared": c.compared, "example": c.example}
+            for c in CONTEST_CLASSES
+        ],
+        "notCompared": [{"title": t, "body": b} for t, b in NOT_COMPARED],
+        "contestClassCounts": {
+            cls: int(n) for cls, n in
+            contested.drop_duplicates("binomial")["contest_class"].value_counts().items()
+        },
+        "counts": {
+            "species": len(wide),
+            "synonymPairs": int((long_df["relation"] == "synonym_of").sum()),
+            "contested": int(contested["binomial"].nunique()),
+            "withYear": int((wide["description_year"] != "").sum()),
+        },
+    }
+    sources_bytes = write_json(WEB_DATA / "sources.json", sources_payload)
+    print(f"sources.json: {sources_bytes/1e3:.0f} kB")
+
     # Source colours as a real stylesheet rather than inline style attributes.
     # The site ships a Content-Security-Policy with no 'unsafe-inline', which is
     # the point of this build -- an uploaded checklist cannot be exfiltrated by
@@ -247,7 +295,7 @@ def main() -> int:
     build_path.write_text(json.dumps({"build": build_id}), encoding="utf-8")
     print(f"build id: {build_id}")
 
-    grand = index_bytes + total + total_c
+    grand = index_bytes + sources_bytes + total + total_c
     print(f"\ntotal uncompressed: {grand/1e6:.1f} MB")
     print(f"first paint fetches index.json only: {index_bytes/1e6:.1f} MB "
           f"(~{index_bytes/1e6/3.5:.1f} MB gzipped)")

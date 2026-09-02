@@ -1,23 +1,13 @@
-/** Small rendering helpers shared by the pages. */
+/** Rendering that needs to know about the data or the loaded checklists.
+ *  Dependency-free helpers live in dom.js. */
+
 import { index, STATUS } from './data.js';
+import * as backbone from './backbone.js';
+import { esc, table } from './dom.js';
 
-export const el = (html) => { const t = document.createElement('template');
-  t.innerHTML = html.trim(); return t.content.firstElementChild; };
-
-export const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-/** Colours come from classes, never a style attribute — see the note in
- *  css/style.css about the Content-Security-Policy this site is served with. */
-export function chip(label, cls = 'neutral') {
-  return `<span class="chip ${cls}">${esc(label)}</span>`;
-}
+export * from './dom.js';
 
 export const sourceLabel = (s) => index()?.sourceLabels?.[s] || s;
-
-export const sourceChips = (value) =>
-  (value || '').replace(/\|/g, ',').split(',').map(s => s.trim()).filter(Boolean)
-    .map(s => chip(s, `src-${s}`)).join('');
 
 export const STATUS_LABEL = {
   [STATUS.ACCEPTED]:  'accepted',
@@ -26,55 +16,54 @@ export const STATUS_LABEL = {
   [STATUS.ABSENT]:    'not in source',
 };
 
-/** Class for a synonym type as it appears in synonyms_detailed. */
-export const typeClass = (t) => ({
-  Homotypic: 'ty-homotypic', Heterotypic: 'ty-heterotypic',
-  'Orthographic variant': 'ty-orthographic', Nomenclatural: 'ty-nomenclatural',
-  Mixed: 'ty-mixed',
-}[t] || 'ty-unknown');
-
-export const citesClass = (appendix) =>
-  ({ I: 'cites-i', II: 'cites-ii', III: 'cites-iii' }[appendix] || 'neutral');
-
-export function table(headers, rows) {
-  if (!rows.length) return '';
-  return `<div class="scroll-x"><table><thead><tr>${
-    headers.map(h => `<th>${esc(h)}</th>`).join('')
-  }</tr></thead><tbody>${
-    rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')
-  }</tbody></table></div>`;
-}
-
-/** Per-source panel — the same resolution the export writes, as in app/search.py. */
+/** One row per source: what does that source alone say about this name?
+ *
+ *  The same resolution the batch export writes into its `<source>_status` /
+ *  `<source>_accepted_name` columns, so a single lookup and a bulk CSV can never
+ *  tell different stories. Loaded checklists appear alongside the built-in
+ *  sources, which is the whole point of loading one.
+ */
 export function perSourcePanel(res) {
-  const rows = index().sources.map(s => {
-    const v = res.perSource[s];
-    const label = STATUS_LABEL[v.status] || v.status;
-    return [
-      `<b>${esc(sourceLabel(s))}</b><br><span class="muted">${esc(s)}</span>`,
-      `<span class="st-${esc(v.status)}">${esc(label)}</span>`,
-      `<span class="sci">${esc(v.acceptedName)}</span>`,
-      `<span class="muted">${esc(v.detail)}</span>`,
-    ];
-  });
+  const row = (name, sub, v) => [
+    `<b>${name}</b><br><span class="muted">${sub}</span>`,
+    `<span class="st-${esc(v.status)}">${esc(STATUS_LABEL[v.status] || v.status)}</span>`,
+    `<span class="sci">${esc(v.acceptedName)}</span>`,
+    `<span class="muted">${esc(v.detail)}</span>`,
+  ];
+
+  const rows = index().sources.map(s => row(esc(sourceLabel(s)), esc(s), res.perSource[s]));
+
+  const mine = backbone.verdictsFor(res.binomial);
+  const registered = backbone.registered();
+  for (const [id, v] of Object.entries(mine)) {
+    rows.push(row(`${esc(registered[id].label)} <span class="kind">yours</span>`, esc(id), v));
+  }
+
   return `<h3>What each source says</h3>
     <p class="caption">Resolved for <span class="sci">${esc(res.binomial)}</span>.
       <code>not in source</code> means that source has no record of this binomial —
       not that it rejects the name.</p>
-    ${table(['Source', 'Says', 'Name it treats as current', 'Detail'], rows)}`;
+    ${table(['Source', 'Says', 'Name it treats as current', 'Detail'], rows)}
+    ${disagreementNote(res, mine, registered)}`;
 }
 
-export function downloadCsv(filename, rows) {
-  if (!rows.length) return;
-  const cols = Object.keys(rows[0]);
-  const cell = (v) => {
-    const s = v === null || v === undefined ? '' : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const csv = [cols.join(','), ...rows.map(r => cols.map(c => cell(r[c])).join(','))].join('\n');
-  // A Blob URL keeps a multi-megabyte export off the address bar.
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+/** Call out where a loaded checklist parts company with the consolidated
+ *  result — the reason an authority loads one at all. */
+function disagreementNote(res, mine, registered) {
+  const differs = Object.entries(mine)
+    .filter(([, v]) => v.status !== STATUS.ABSENT
+                    && (v.acceptedName || '') !== (res.acceptedName || ''))
+    .map(([id, v]) => `<b>${esc(registered[id].label)}</b> says `
+      + esc(STATUS_LABEL[v.status] || v.status)
+      + (v.acceptedName ? ` (<span class="sci">${esc(v.acceptedName)}</span>)` : ''));
+
+  if (differs.length) {
+    return `<div class="banner warn">Your checklist differs from the consolidated
+      result: ${differs.join('; ')}.</div>`;
+  }
+  if (!Object.keys(registered).length) {
+    return `<p class="muted">Load your own checklist on the <b>Your own checklists</b>
+      page to see it compared here.</p>`;
+  }
+  return '';
 }

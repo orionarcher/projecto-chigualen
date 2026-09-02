@@ -162,6 +162,12 @@ and resolved in the page and never reaches a server. Search and the full batch
 diff need no network access at all once the ~1 MB index has loaded; 5,000 names
 resolve in ~250 ms.
 
+All five pages are ported, including custom checklists and the data-source
+descriptions. The Data sources page is generated from
+[`scripts/_sources.py`](scripts/_sources.py) — the same registry that now holds
+the single definition of each `contest_class`, previously copied into three
+files.
+
 Its risk is that `web/js/data.js` re-implements the resolver that
 [`app/data.py`](app/data.py) owns. `web/parity/` holds that in check — 1,213
 frozen Python verdicts replayed through the browser, compared field by field.

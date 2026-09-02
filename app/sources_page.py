@@ -12,7 +12,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from _sources import REGISTRY  # noqa: E402
+from _sources import (  # noqa: E402
+    CITES_DISTINCTION,
+    CONTEST_CLASSES,
+    NOT_COMPARED,
+    REGISTRY,
+)
 
 KIND_LABEL = {
     "backbone": "Taxonomic backbone",
@@ -20,44 +25,6 @@ KIND_LABEL = {
     "curated": "Curated by the project team",
     "custom": "Your own checklist",
 }
-
-
-# Exactly the rules scripts/06_consolidate.py applies, in the same words.
-CONTEST_CLASSES = [
-    (
-        "status_conflict",
-        "#c62828",
-        "Sources disagree about whether the name is accepted at all.",
-        "At least one source records the binomial as an **accepted name**, while "
-        "at least one other records it as a **synonym of a different name**.",
-        "`relation` — `accepted` vs `synonym_of` — compared across sources.",
-        "*Anathallis ariasii* is an accepted listing in the CITES listings CSV, "
-        "while WCVP and WFO both sink it into *Stelis ariasii*.",
-    ),
-    (
-        "parent_conflict",
-        "#ef6c00",
-        "Everyone agrees it is a synonym; nobody agrees of what.",
-        "Every source that mentions the binomial calls it a synonym, but they "
-        "name **different accepted parents** for it.",
-        "`accepted_name` on the synonym rows — the set of distinct parents "
-        "claimed across sources has more than one member.",
-        "*Heteranthocidium ariasii* is filed under *Oncidium ariasii* by one "
-        "source and under a different parent by another.",
-    ),
-    (
-        "parent_contested",
-        "#f9a825",
-        "Nothing disagrees about this name — its parent is the problem.",
-        "Every source agrees the binomial is a synonym, and they all name the "
-        "**same** parent. But that parent is itself contested, so the placement "
-        "cannot be resolved.",
-        "Nothing on this name. The class is inherited from the parent's own "
-        "`contest_class`.",
-        "*Oncidium isidrense* is unanimously a synonym of *Oncidium ariasii* — "
-        "but *Oncidium ariasii* is itself a `status_conflict`.",
-    ),
-]
 
 
 def render_source_card(source_id: str) -> None:
@@ -119,20 +86,18 @@ def render() -> None:
 
     st.subheader("The two CITES sources are different things")
     st.markdown(
+        "This is the distinction that trips people up most often, so it is worth "
+        "stating plainly. **`cites_csv` and `cites_pdf` are not two formats of one "
+        "dataset.** They answer different questions and neither substitutes for "
+        "the other."
+    )
+    st.markdown(
+        "| | `cites_csv` — the listings | `cites_pdf` — the checklist |\n"
+        "|---|---|---|\n"
+        + "".join(f"| **{q}** | {a} | {b} |\n" for q, a, b in CITES_DISTINCTION)
+    )
+    st.markdown(
         """
-This is the distinction that trips people up most often, so it is worth stating
-plainly. **`cites_csv` and `cites_pdf` are not two formats of one dataset.**
-They answer different questions and neither substitutes for the other.
-
-| | `cites_csv` — the listings | `cites_pdf` — the checklist |
-|---|---|---|
-| **Question it answers** | *Is this name regulated, and how?* | *What is the current name for the name on this permit?* |
-| **Origin** | CITES species-listings export (Species+ / CITES Checklist shape) | *CITES Appendix II Orchid Checklist*, 2022, UNEP-WCMC & RBG Kew — Part I, the "ALL NAMES → ACCEPTED NAME" table |
-| **Shape** | one row per listed taxon | one row per synonym → accepted-name pair |
-| **Gives you** | Appendix I/II/III, the annotation text, range states, the author citation (usually with a year) | the synonym-to-accepted mapping used for CITES purposes |
-| **Cannot give you** | any synonym at all — every row is read as accepted | the appendix, identifiers, or homotypic/heterotypic typing |
-| **Rows contributed** | 29,347 accepted listings | 12,746 synonym pairs |
-
 The practical consequence: a name can be **accepted in `cites_csv` and a synonym
 everywhere else**, because the listings table records the name under which a
 taxon is regulated, not the name a botanist would use today. That is the single
@@ -171,42 +136,22 @@ silently resolved.
         "records **which comparison failed**."
     )
 
-    for name, colour, headline, definition, compared, example in CONTEST_CLASSES:
+    for cls in CONTEST_CLASSES:
         with st.container(border=True):
             st.markdown(
                 f"<span style='display:inline-block; padding:2px 10px; border-radius:12px;"
-                f" background:{colour}22; color:{colour}; font-weight:600;"
-                f" border:1px solid {colour}55; font-family:monospace;'>{name}</span>"
-                f" &nbsp; <b>{headline}</b>",
+                f" background:{cls.colour}22; color:{cls.colour}; font-weight:600;"
+                f" border:1px solid {cls.colour}55; font-family:monospace;'>{cls.id}</span>"
+                f" &nbsp; <b>{cls.headline}</b>",
                 unsafe_allow_html=True,
             )
-            st.markdown(definition)
-            st.markdown(f"**Fields compared:** {compared}")
-            st.caption(f"Example — {example}")
+            st.markdown(cls.definition)
+            st.markdown(f"**Fields compared:** {cls.compared}")
+            st.caption(f"Example — {cls.example}")
 
-    st.error(
-        "**A difference in `synonym_type` never makes a name contested.** "
-        "If sources agree the name is a synonym and agree on the parent, but one "
-        "calls the relationship homotypic and another heterotypic, the pair stays "
-        "in the consolidated database with "
-        "`synonym_type_consensus = Mixed`. Look for `Mixed` in the synonym table "
-        "on a species card — that is where typing disagreements show up.",
-        icon="⚠",
-    )
-
-    st.markdown(
-        """
-**Two things that are *not* compared, and why:**
-
-- **Authority strings.** WCVP writes `(Luer & Hirtz) Pridgeon & M.W.Chase`, the
-  CITES listings write `(Luer & Hirtz) Pridgeon & M.W.Chase, 2001`. Comparing
-  these would flag thousands of names over punctuation. The highest-priority
-  source's string is kept and the rest are visible per-source.
-- **Infraspecific taxa.** Everything is compared at the **binomial** rank.
-  A source that calls *Vanda falcata* subsp. *falcata* a synonym of something is
-  not treated as disagreeing about *Vanda falcata* itself.
-        """
-    )
+    st.markdown("#### What is deliberately *not* compared")
+    for title, body in NOT_COMPARED:
+        st.markdown(f"**{title}.** {body}")
 
     st.divider()
     st.subheader("Coming: CITES Standard Nomenclatures")

@@ -213,6 +213,125 @@ USER_SYNONYMS = Source(
 )
 
 
+@dataclass(frozen=True)
+class ContestClass:
+    """One way the sources can fail to agree on a name.
+
+    Canonical here because four places need it and they had drifted into three
+    copies: the consolidation that assigns it, the repair script that backfills
+    it, the Streamlit page that explains it, and the static build's export.
+    """
+    id: str
+    colour: str
+    headline: str      # one line, plain language
+    definition: str    # what puts a name in this class
+    compared: str      # which fields the decision actually looked at
+    example: str
+
+    @property
+    def rule(self) -> str:
+        """The single string written to contest_class_reference.csv."""
+        return f"{self.definition} Compared field: {self.compared}"
+
+
+CONTEST_CLASSES: list[ContestClass] = [
+    ContestClass(
+        id="status_conflict",
+        colour="#c62828",
+        headline="Sources disagree about whether the name is accepted at all.",
+        definition=(
+            "At least one source records this binomial as an accepted name while "
+            "at least one other records it as a synonym of a different name."
+        ),
+        compared="`relation` — `accepted` vs `synonym_of` — across sources.",
+        example=(
+            "*Anathallis ariasii* is an accepted listing in the CITES listings CSV, "
+            "while WCVP and WFO both sink it into *Stelis ariasii*."
+        ),
+    ),
+    ContestClass(
+        id="parent_conflict",
+        colour="#ef6c00",
+        headline="Everyone agrees it is a synonym; nobody agrees of what.",
+        definition=(
+            "Every source that mentions the binomial calls it a synonym, but they "
+            "name different accepted parents for it."
+        ),
+        compared=(
+            "`accepted_name` on the synonym rows — the set of distinct parents "
+            "claimed across sources has more than one member."
+        ),
+        example=(
+            "*Heteranthocidium ariasii* is filed under *Oncidium ariasii* by one "
+            "source and under a different parent by another."
+        ),
+    ),
+    ContestClass(
+        id="parent_contested",
+        colour="#f9a825",
+        headline="Nothing disagrees about this name — its parent is the problem.",
+        definition=(
+            "Every source agrees the binomial is a synonym, and they all name the "
+            "same parent. But that parent is itself contested, so the placement "
+            "cannot be resolved."
+        ),
+        compared="nothing on this name. The class is inherited from the parent.",
+        example=(
+            "*Oncidium isidrense* is unanimously a synonym of *Oncidium ariasii* — "
+            "but *Oncidium ariasii* is itself a `status_conflict`."
+        ),
+    ),
+]
+
+CONTEST_CLASS_BY_ID: dict[str, ContestClass] = {c.id: c for c in CONTEST_CLASSES}
+CONTEST_CLASS_RULE: dict[str, str] = {c.id: c.rule for c in CONTEST_CLASSES}
+
+
+# The distinction readers get wrong most often, as structured rows so the
+# Streamlit page and the static build render the same facts.
+CITES_DISTINCTION: list[tuple[str, str, str]] = [
+    ("Question it answers",
+     "Is this name regulated, and how?",
+     "What is the current name for the name on this permit?"),
+    ("Origin",
+     "CITES species-listings export (Species+ / CITES Checklist shape)",
+     "*CITES Appendix II Orchid Checklist*, 2022, UNEP-WCMC & RBG Kew — Part I, "
+     "the 'ALL NAMES → ACCEPTED NAME' table"),
+    ("Shape",
+     "one row per listed taxon",
+     "one row per synonym → accepted-name pair"),
+    ("Gives you",
+     "Appendix I/II/III, the annotation text, range states, the author citation "
+     "(usually with a year)",
+     "the synonym-to-accepted mapping used for CITES purposes"),
+    ("Cannot give you",
+     "any synonym at all — every row is read as accepted",
+     "the appendix, identifiers, or homotypic/heterotypic typing"),
+    ("Rows contributed",
+     "29,347 accepted listings",
+     "12,746 synonym pairs"),
+]
+
+# Comparisons the consolidation deliberately does not make.
+NOT_COMPARED: list[tuple[str, str]] = [
+    ("Synonym type",
+     "A disagreement about homotypic vs heterotypic **never** makes a name "
+     "contested. If sources agree the name is a synonym and agree on the parent, "
+     "the pair stays in the consolidated database with "
+     "`synonym_type_consensus = Mixed`. Look for `Mixed` in the synonym table on "
+     "a species card — that is where typing disagreements surface."),
+    ("Authority strings",
+     "WCVP writes `(Luer & Hirtz) Pridgeon & M.W.Chase`, the CITES listings write "
+     "`(Luer & Hirtz) Pridgeon & M.W.Chase, 2001`. Comparing these would flag "
+     "thousands of names over punctuation. The highest-priority source's string "
+     "is kept and the rest stay visible per-source."),
+    ("Infraspecific taxa",
+     "Everything is compared at the **binomial** rank. A source that calls "
+     "*Vanda falcata* subsp. *falcata* a synonym of something is not treated as "
+     "disagreeing about *Vanda falcata* itself."),
+]
+
+
 REGISTRY: dict[str, Source] = {
     s.id: s for s in (WCVP, WFO, CITES_CSV, CITES_PDF, USER_SYNONYMS)
 }

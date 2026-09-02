@@ -2,7 +2,9 @@
 import * as data from './data.js';
 import * as search from './search.js';
 import * as ingest from './ingest.js';
-import { esc } from './ui.js';
+import * as backbone from './backbone.js';
+import * as sources from './sources.js';
+import { esc } from './dom.js';
 
 const main = document.getElementById('main');
 const bar = document.getElementById('boot-bar');
@@ -24,16 +26,29 @@ function about(container) {
       <div class="stat plain">
         <div class="n">${idx.counts.contested.toLocaleString()}</div><div class="l">Contested binomials</div></div>
     </div>
-    <h3>Sources</h3>
-    <ul>${idx.sources.map(s =>
-      `<li><b>${esc(idx.sourceLabels[s])}</b> <code>${esc(s)}</code></li>`).join('')}</ul>
-    <p class="muted">This is a static build of the Streamlit app. The pipeline that
-      produces the data is unchanged and still runs offline.</p>`;
+    <h3>The pages</h3>
+    <ul>
+      <li><b>Search</b> — find a species by its accepted name or any known synonym.
+        Suggestions appear as you type, including on the epithet alone and through
+        typos. Every result shows what each source says on its own.</li>
+      <li><b>Ingest authority CSV</b> — diff an external list against the database.
+        The export carries a status and accepted name <i>per source</i>, plus the
+        reason behind any contested verdict and the description year.</li>
+      <li><b>Your own checklists</b> — load an authority's internal backbone and it
+        is compared alongside the five built-in sources everywhere in the app.</li>
+      <li><b>Data sources</b> — what each source is, where it comes from, and the
+        exact rules behind <code>contest_class</code>.</li>
+    </ul>
+    <p class="muted">This is a static build of the Streamlit app in
+      <code>app/</code>. The pipeline that produces the data is unchanged and still
+      runs offline.</p>`;
 }
 
 const PAGES = {
   search: (c) => search.render(c),
   ingest: (c) => ingest.render(c),
+  checklists: (c) => backbone.render(c),
+  sources: (c) => sources.render(c),
   about,
 };
 
