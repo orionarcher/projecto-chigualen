@@ -7,6 +7,7 @@
  *  export column prefixes; they are not names, and do not appear here as names. */
 
 import { el, esc, table, chip } from './dom.js';
+import { dataUrl } from './data.js';
 import * as backbone from './backbone.js';
 
 const KIND_LABEL = {
@@ -61,8 +62,10 @@ function sourceCard(s) {
 export async function render(container) {
   container.innerHTML = '<p class="muted">Loading source descriptions…</p>';
   if (!payload) {
-    const url = new URL('../data/sources.json', import.meta.url);
-    payload = await fetch(url.href).then(r => r.json());
+    // Must go through dataUrl(): /data/* is cached immutably for a year, and only
+    // the build stamp it appends makes that safe. Fetching the bare path pins the
+    // reader to whichever version of this page they saw first.
+    payload = await fetch(dataUrl('sources.json')).then(r => r.json());
   }
   const p = payload;
   const custom = Object.values(backbone.registered());

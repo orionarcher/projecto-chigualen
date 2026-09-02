@@ -30,7 +30,7 @@ const BUILD_URL = new URL('../build.json', DATA);
 // busted by a build id instead. Without this, `immutable` would mean a rebuilt
 // database never reaches anyone who has visited before.
 let BUILD = '';
-const dataUrl = (path) =>
+export const dataUrl = (path) =>
   new URL(path + (BUILD ? (path.includes('?') ? '&' : '?') + 'v=' + BUILD : ''), DATA).href;
 
 // ---------------------------------------------------------------- loading
