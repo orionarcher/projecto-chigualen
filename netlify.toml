@@ -1,0 +1,43 @@
+# Static build of the Chigualen app. There is no server: the pipeline output is
+# packed into JSON at build time and every lookup runs in the visitor's browser.
+
+[build]
+  publish  = "web"
+  command  = "pip install -r requirements-web.txt && python3 scripts/10_export_web.py"
+
+[build.environment]
+  # scripts/ uses `from __future__ import annotations` throughout, but pin a
+  # modern interpreter rather than inherit whatever the build image defaults to.
+  PYTHON_VERSION = "3.11"
+
+# Data files are safe to cache for a year *because* web/js/data.js appends the
+# build id from /build.json to every request: the URL changes exactly when the
+# content does. Without that, caching these immutably would pin visitors to
+# whichever version of the database they first loaded.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Code has no such stamp, so it must revalidate. These files are a few kB and
+# ETag makes the common case a 304 — cheap, and a deploy takes effect at once
+# rather than an hour later.
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # No third-party anything: no CDN scripts, no fonts, no analytics. Worth
+    # stating in a header as well as in the README, because the selling point of
+    # this build is that an authority's checklist never leaves the browser.
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'self'"

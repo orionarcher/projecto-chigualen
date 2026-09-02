@@ -1,0 +1,193 @@
+:root {
+  --bg: #0e1117; --panel: #161b25; --panel-2: #1c2330; --line: #2a3342;
+  --fg: #e6edf3; --dim: #8b98a9; --accent: #2e7d32;
+  --accepted: #2e7d32; --synonym: #1565c0; --contested: #c62828;
+  --absent: #5a6472; --warn: #ef6c00;
+  --wcvp: #2e7d32; --wfo: #1565c0; --cites_csv: #ef6c00;
+  --cites_pdf: #f9a825; --user_synonyms: #6a1b9a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+a { color: #58a6ff; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em;
+       background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+.layout { display: flex; min-height: 100vh; }
+
+/* sidebar */
+.sidebar { width: 232px; flex: none; background: var(--panel); border-right: 1px solid var(--line); padding: 22px 18px; }
+.brand { font-size: 1.05rem; font-weight: 650; margin: 0 0 2px; }
+.brand-sub { color: var(--dim); font-size: 0.82rem; margin-bottom: 22px; }
+.nav button {
+  display: block; width: 100%; text-align: left; background: none; border: 0;
+  color: var(--dim); padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 0.93rem;
+}
+.nav button:hover { background: var(--panel-2); color: var(--fg); }
+.nav button[aria-current="page"] { background: var(--panel-2); color: var(--fg); font-weight: 600; }
+.side-note { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line);
+             color: var(--dim); font-size: 0.79rem; }
+
+/* main */
+main { flex: 1; padding: 34px 40px 80px; max-width: 1080px; }
+/* A real scale. Section headings were the same size as body text, which left
+   a long reference page reading as one undifferentiated block. */
+h1 { font-size: 2.1rem; margin: 0 0 8px; letter-spacing: -0.02em; line-height: 1.15; }
+h2 { font-size: 1.55rem; margin: 0 0 4px; letter-spacing: -0.015em; line-height: 1.2; }
+h3 { font-size: 1.02rem; margin: 26px 0 10px; letter-spacing: 0.01em; }
+
+/* Top-level sections of a long page. */
+.section { font-size: 1.5rem; font-weight: 650; letter-spacing: -0.015em;
+           margin: 52px 0 6px; padding-top: 22px; border-top: 1px solid var(--line); }
+.section:first-of-type { margin-top: 36px; }
+.section-intro { color: var(--dim); margin: 0 0 20px; max-width: 62ch; }
+.lede { font-size: 1.06rem; color: var(--dim); max-width: 64ch; margin: 0 0 26px; }
+.caption { color: var(--dim); font-size: 0.9rem; margin-bottom: 22px; }
+.sci { font-style: italic; }
+
+input[type=text], input[type=file], select {
+  width: 100%; background: var(--panel-2); border: 1px solid var(--line);
+  color: var(--fg); padding: 9px 12px; border-radius: 8px; font-size: 0.95rem;
+}
+input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+label { display: block; font-size: 0.85rem; color: var(--dim); margin: 14px 0 5px; }
+button.primary {
+  background: var(--accent); color: #fff; border: 0; padding: 9px 18px;
+  border-radius: 8px; font-size: 0.93rem; font-weight: 600; cursor: pointer;
+}
+button.primary:disabled { opacity: 0.45; cursor: default; }
+
+/* chips */
+.chip { display: inline-block; padding: 2px 10px; margin: 2px 3px 2px 0; border-radius: 12px;
+        font-size: 0.8rem; font-weight: 500; border: 1px solid; }
+/* typeahead */
+.combo { position: relative; }
+.results {
+  list-style: none; padding: 4px; margin: 4px 0 0; position: absolute; z-index: 20;
+  left: 0; right: 0; max-height: 340px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 30px #0008;
+}
+.results[hidden] { display: none; }
+.results li button {
+  width: 100%; text-align: left; background: none; border: 0; color: var(--fg);
+  padding: 8px 11px; border-radius: 7px; cursor: pointer; display: flex;
+  align-items: baseline; gap: 10px; font-size: 0.94rem;
+}
+.results li button:hover, .results li button.on { background: var(--panel-2); }
+.results li button.on { outline: 1px solid var(--accent); }
+.results .hit { color: #fff; background: #2e7d3244; border-radius: 3px; }
+.results .kind { margin-left: auto; font-size: 0.76rem; white-space: nowrap; }
+.results .why { font-size: 0.72rem; color: var(--dim); font-style: italic; white-space: nowrap; }
+.results .empty { padding: 10px 11px; }
+
+/* panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+         padding: 16px 18px; margin: 14px 0; }
+.banner { border-radius: 10px; padding: 14px 18px; margin: 16px 0; border: 1px solid; }
+.banner.error { background: #c6282811; border-color: #c6282855; }
+.banner.info  { background: #1565c011; border-color: #1565c055; }
+.banner.warn  { background: #ef6c0011; border-color: #ef6c0055; }
+.banner h4 { margin: 0 0 6px; font-size: 1rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th { text-align: left; color: var(--dim); font-weight: 600; border-bottom: 1px solid var(--line);
+     padding: 7px 10px; white-space: nowrap; }
+td { padding: 7px 10px; border-bottom: 1px solid #202836; vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.scroll-x { overflow-x: auto; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+@media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } .layout { flex-direction: column; }
+  .sidebar { width: auto; } main { padding: 24px 18px 60px; } }
+.kv { margin: 3px 0; } .kv b { color: var(--dim); font-weight: 600; }
+
+.stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0; }
+.stat { flex: 1; min-width: 128px; border: 1px solid; border-radius: 9px; padding: 13px; text-align: center; }
+.stat .n { font-size: 1.6rem; font-weight: 650; }
+.stat .l { font-size: 0.83rem; }
+
+.loading { padding: 60px 0; text-align: center; color: var(--dim); }
+.bar { height: 4px; background: var(--panel-2); border-radius: 3px; overflow: hidden;
+       max-width: 320px; margin: 14px auto 0; }
+.bar > div { height: 100%; background: var(--accent); width: 0; transition: width .15s; }
+.linkish { background: none; border: 0; color: #58a6ff; cursor: pointer; padding: 0; font-size: inherit; }
+.muted { color: var(--dim); font-size: 0.85rem; }
+
+
+/* ---------------------------------------------------------------------------
+   Colour vocabularies as classes.
+
+   The site is served with `style-src 'self'` and no 'unsafe-inline'. That is
+   deliberate: this build's whole claim is that an uploaded checklist cannot
+   leave the browser, and a CSP that allows inline styles is a weaker fence than
+   one that does not. So nothing here may be coloured from a style attribute —
+   every colour is a class. Per-source colours are generated into
+   data/sources.css from scripts/_sources.py.
+   --------------------------------------------------------------------------- */
+
+.chip.neutral   { color: var(--dim);       background: #8b98a922; border-color: #8b98a955; }
+.chip.danger    { color: var(--contested); background: #c6282822; border-color: #c6282855; }
+
+.ty-homotypic   { color: #2e7d32; background: #2e7d3222; border-color: #2e7d3255; }
+.ty-heterotypic { color: #ad1457; background: #ad145722; border-color: #ad145755; }
+.ty-orthographic{ color: #6d4c41; background: #6d4c4122; border-color: #6d4c4155; }
+.ty-nomenclatural { color: #455a64; background: #455a6422; border-color: #455a6455; }
+.ty-mixed       { color: #ef6c00; background: #ef6c0022; border-color: #ef6c0055; }
+.ty-unknown     { color: var(--dim); background: #8b98a922; border-color: #8b98a955; }
+
+.cites-i        { color: #b71c1c; background: #b71c1c22; border-color: #b71c1c55; }
+.cites-ii       { color: #ef6c00; background: #ef6c0022; border-color: #ef6c0055; }
+.cites-iii      { color: #f9a825; background: #f9a82522; border-color: #f9a82555; }
+
+.st-accepted    { color: var(--accepted); }
+.st-synonym     { color: var(--synonym); }
+.st-contested   { color: var(--contested); }
+.st-not_in_source { color: var(--absent); }
+
+/* Diff summary tiles, one class per diff_category. */
+.stat.plain                 { border-color: var(--line); }
+.cat-matched_accepted { border-color: #2e7d3255; background: #2e7d3211; color: var(--accepted); }
+.cat-matched_synonym  { border-color: #1565c055; background: #1565c011; color: var(--synonym); }
+.cat-contested        { border-color: #ef6c0055; background: #ef6c0011; color: var(--warn); }
+.cat-missing          { border-color: #c6282855; background: #c6282811; color: var(--contested); }
+.cat-unparseable      { border-color: #5a647255; background: #5a647211; color: var(--absent); }
+.stat .n, .stat .l { color: inherit; }
+
+/* Spacing utilities, so layout never needs a style attribute either. */
+.mt-0  { margin-top: 0; }
+.mt-sm { margin-top: 12px; }
+.mt-lg { margin-top: 26px; }
+.my-sm { margin: 12px 0; }
+.page  { padding: 34px 40px; max-width: 1000px; }
+
+/* Data sources page */
+.src-kind { font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.05em; background: none !important; border: 0 !important;
+            margin-bottom: 6px; }
+.panel > h3:first-child + .src-kind { margin-top: -4px; }
+.panel ul { margin: 6px 0 0; padding-left: 20px; }
+.panel li { margin: 3px 0; }
+
+/* Source cards: name large, kind as a quiet eyebrow above it. */
+.source-card { padding: 20px 22px; }
+.source-card .eyebrow { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: 0.09em; color: var(--dim); margin-bottom: 6px; }
+.source-card h3 { font-size: 1.3rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+.source-card .one-liner { font-size: 1rem; margin: 0 0 18px; max-width: 66ch; }
+.source-card h4 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.07em;
+                  color: var(--dim); margin: 0 0 6px; font-weight: 700; }
+.source-card .meta { font-size: 0.83rem; color: var(--dim); margin-top: 16px;
+                     padding-top: 12px; border-top: 1px solid var(--line); }
+.source-card .meta div { margin: 2px 0; }
+
+/* Contest classes as a compact reference rather than three essays. */
+.rule-row { display: grid; grid-template-columns: 190px 1fr; gap: 20px;
+            padding: 16px 0; border-top: 1px solid var(--line); }
+.rule-row:first-of-type { border-top: 0; }
+.rule-row .rule-name { font-weight: 650; }
+.rule-row .rule-count { color: var(--dim); font-size: 0.83rem; font-weight: 400; }
+.rule-row .rule-how { color: var(--dim); font-size: 0.88rem; margin: 6px 0 0; }
+.rule-row .rule-eg { font-size: 0.88rem; margin: 8px 0 0; }
+@media (max-width: 700px) { .rule-row { grid-template-columns: 1fr; gap: 6px; } }

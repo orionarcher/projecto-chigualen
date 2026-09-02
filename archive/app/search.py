@@ -26,7 +26,7 @@ from app.data import (
     resolve,
 )
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from _sources import SOURCE_COLOURS, label as source_label  # noqa: E402
 
 TYPE_COLORS = {

@@ -1,0 +1,54 @@
+/* Loaded as a module rather than inlined: the site's CSP is `script-src
+ * 'self'`, which blocks inline <script>. See css/style.css for the same
+ * constraint on styles. */
+import * as data from '../js/data.js';
+
+const out = document.getElementById('out');
+const FIELDS = ['binomial', 'verdict', 'acceptedName', 'synonymType',
+                'descriptionYear', 'citesAppendix', 'contestClass'];
+
+(async () => {
+  await data.load();
+  const fixture = await (await fetch('expected.json')).json();
+
+  const mismatches = [];
+  const t0 = performance.now();
+  for (const want of fixture.cases) {
+    // resolve() is the synchronous path the batch export uses. Contested cases
+    // additionally need a shard for per-source detail, so use the full path.
+    const got = want.verdict === 'contested'
+      ? await data.resolveFull(want.query)
+      : data.resolve(want.query);
+
+    for (const f of FIELDS) {
+      if ((got[f] || '') !== (want[f] || '')) {
+        mismatches.push({ query: want.query, field: f, want: want[f], got: got[f] });
+      }
+    }
+    for (const s of fixture.sources) {
+      const [wStatus, wName] = want.perSource[s];
+      const g = got.perSource[s];
+      if (g.status !== wStatus || (g.acceptedName || '') !== (wName || '')) {
+        mismatches.push({ query: want.query, field: `perSource.${s}`,
+                          want: `${wStatus} ${wName}`, got: `${g.status} ${g.acceptedName}` });
+      }
+    }
+  }
+  const ms = Math.round(performance.now() - t0);
+  const n = fixture.cases.length;
+
+  out.className = '';
+  out.innerHTML = mismatches.length === 0
+    ? `<div class="banner info"><h4>✓ ${n.toLocaleString()} cases, no mismatches</h4>
+        <p>The browser resolver agrees with <code>archive/app/data.py</code> on every field
+        of every case, in ${ms} ms.</p></div>`
+    : `<div class="banner error"><h4>✗ ${mismatches.length} mismatches across
+        ${n.toLocaleString()} cases</h4></div>
+       <table><thead><tr><th>Query</th><th>Field</th><th>Python</th><th>Browser</th></tr></thead>
+       <tbody>${mismatches.slice(0, 100).map(m => `<tr>
+         <td class="sci">${m.query}</td><td><code>${m.field}</code></td>
+         <td>${m.want ?? ''}</td><td>${m.got ?? ''}</td></tr>`).join('')}</tbody></table>
+       ${mismatches.length > 100 ? `<p class="muted">…and ${mismatches.length - 100} more.</p>` : ''}`;
+  document.title = mismatches.length ? `✗ ${mismatches.length} mismatches` : `✓ parity`;
+})().catch(e => { out.className = ''; out.innerHTML =
+  `<div class="banner error"><h4>Harness error</h4><p>${e.message}</p></div>`; });

@@ -57,30 +57,13 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from _normalize import description_year  # noqa: E402
+from _sources import CONTEST_CLASS_RULE  # noqa: E402
 
 ROOT = SCRIPT_DIR.parent
 CLEAN_DIR = ROOT / "Chigualen" / "data" / "clean"
 OUT_DIR = ROOT / "Chigualen" / "data" / "out"
 LONG_PATH = OUT_DIR / "orchid_synonyms_long.csv"
 CONTESTED_PATH = OUT_DIR / "contested_names.csv"
-
-# Kept in step with scripts/06_consolidate.py — see CONTEST_CLASS_RULE there.
-CONTEST_CLASS_RULE = {
-    "status_conflict": (
-        "At least one source records this binomial as an accepted name while at "
-        "least one other records it as a synonym of a different name. Compared "
-        "field: `relation` (accepted vs synonym_of)."
-    ),
-    "parent_conflict": (
-        "Every source agrees this binomial is a synonym, but they name different "
-        "accepted parents for it. Compared field: `accepted_name` on the synonym rows."
-    ),
-    "parent_contested": (
-        "Every source agrees this binomial is a synonym of one and the same "
-        "parent, but that parent is itself contested, so the placement cannot be "
-        "resolved. No field disagrees on this name directly."
-    ),
-}
 
 # Only the backbones can contaminate: they are the sources that emit
 # `synonym_of` rows carrying rich self-scoped metadata. Priority order.
@@ -114,6 +97,7 @@ BACKBONE_EXTRA_KEYS = {
 ALL_BACKBONE_EXTRA_KEYS = set().union(*BACKBONE_EXTRA_KEYS.values())
 
 GEO_SEP = "; "
+
 
 
 def load_backbone(name: str) -> pd.DataFrame | None:

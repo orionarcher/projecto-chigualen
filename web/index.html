@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chigualen — Orchid Consolidation</title>
+<meta name="description" content="Consolidated orchid species database across WCVP, WFO and the two CITES sources. Runs entirely in your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🌸</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/sources.css">
+<link rel="preload" as="fetch" href="build.json" crossorigin="anonymous">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">🌸 Projecto Chigualen</div>
+    <div class="brand-sub">Orchid species consolidation</div>
+    <nav class="nav" id="nav">
+      <button data-page="search" aria-current="page">Search</button>
+      <button data-page="ingest">Check a list</button>
+      <button data-page="checklists">Your reference lists</button>
+      <button data-page="sources">Data sources</button>
+      <button data-page="about">About</button>
+    </nav>
+    <div class="side-note">
+      Built from the World Checklist of Vascular Plants, World Flora Online, the
+      CITES Listings, the CITES Appendix II Orchid Checklist and a curated
+      synonym list.
+      <div id="side-checklists"></div>
+      <p><b>Everything runs in your browser.</b> Nothing you type or upload is
+      sent anywhere.</p>
+    </div>
+  </aside>
+  <main id="main">
+    <div class="loading" id="boot">
+      Loading the name index…
+      <div class="bar"><div id="boot-bar"></div></div>
+      <div class="muted mt-sm" id="boot-note"></div>
+    </div>
+  </main>
+</div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

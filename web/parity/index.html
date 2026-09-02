@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Parity check — JS resolver vs Python</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🌸</text></svg>">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../css/sources.css">
+</head>
+<body>
+<main class="page">
+  <h1>Parity check</h1>
+  <p class="caption">Runs every case in <code>expected.json</code> — frozen from
+    <code>archive/app/data.py</code> by <code>tests/make_parity_fixture.py</code> — through
+    <code>web/js/data.js</code> and compares verdict for verdict, source for source.
+    This is the guard against the two resolvers drifting apart.</p>
+  <div id="out" class="loading">Running…</div>
+</main>
+<script type="module" src="parity.js"></script>
+</body>
+</html>

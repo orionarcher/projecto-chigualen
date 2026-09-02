@@ -9,7 +9,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parent.parent
+# archive/app/data.py → repo root is three levels up.
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from _normalize import binomial as make_binomial  # noqa: E402

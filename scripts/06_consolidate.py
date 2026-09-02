@@ -38,7 +38,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _normalize import SCHEMA, description_year  # noqa: E402
-from _sources import PIPELINE_ORDER  # noqa: E402
+from _sources import CONTEST_CLASS_RULE, PIPELINE_ORDER  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 CLEAN_DIR = ROOT / "Chigualen" / "data" / "clean"
@@ -458,27 +458,8 @@ def main() -> int:
     # ---------------------------------------------------------------
     rows_b: list[dict[str, str]] = []
 
-    # Exactly what each contest_class means. Written once to
-    # contest_class_reference.csv rather than repeated on all 36k contested rows
-    # — the app joins it back on for the "how is this decided?" panel.
-    CONTEST_CLASS_RULE = {
-        "status_conflict": (
-            "At least one source records this binomial as an accepted name while "
-            "at least one other records it as a synonym of a different name. "
-            "Compared field: `relation` (accepted vs synonym_of)."
-        ),
-        "parent_conflict": (
-            "Every source agrees this binomial is a synonym, but they name "
-            "different accepted parents for it. Compared field: `accepted_name` "
-            "on the synonym rows."
-        ),
-        "parent_contested": (
-            "Every source agrees this binomial is a synonym of one and the same "
-            "parent, but that parent is itself contested, so the placement "
-            "cannot be resolved. No field disagrees on this name directly."
-        ),
-    }
-
+    # Definitions live in scripts/_sources.py so the consolidation, the repair
+    # script and both front-ends cannot drift apart on what a class means.
     def contest_class_of(binomial: str) -> str:
         if binomial in contested_status:
             return "status_conflict"
